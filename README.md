@@ -125,7 +125,9 @@ skills CLI はスキルの版番号を持たず、取得元の git ref と内容
 npx --yes skills@1.7.4 add 53able/ai-dev-workflow-skills#v0.1.0 --skill '*' -a claude-code codex -y
 ```
 
-指定した ref は `skills-lock.json` の `ref` に記録される（CLI 1.7.4 で `#main` を指定して確認）。`skills-lock.json` は利用先でコミットする。`update` は記録した ref と照合するため、タグを固定した場合は版が上がらない。版を上げるときは新しいタグで上の add を再実行する。ref を省くと既定ブランチを追い、`update` で最新の内容になる。
+指定した ref は `skills-lock.json` の `ref` に記録される。`skills-lock.json` は利用先でコミットする。`update` は記録した ref と照合するため、タグを固定した場合は版が上がらない。版を上げるときは新しいタグで上の add を再実行する。16スキルの `ref` と内容が新しいタグのものに置き換わる。ref を省くと既定ブランチを追い、`update` で最新の内容になる。
+
+CLI 1.7.4 で、ローカルの git サーバーに置いたタグを使い、リンク・コピー両配置で上記を確認した。GitHub からの導入では `#main` の記録と `update` の照合だけを確認している。
 
 リリース手順：
 
