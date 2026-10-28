@@ -1,0 +1,10 @@
+{"type": "system", "subtype": "init", "model": "claude-sonnet-5-5", "skills": ["ains-build"]}
+{"type": "assistant", "message": {"model": "claude-sonnet-5-5", "role": "assistant", "content": [{"type": "tool_use", "id": "t", "name": "Skill", "input": {"skill": "ains-tdd"}}]}}
+{"type": "assistant", "message": {"model": "claude-sonnet-5-5", "role": "assistant", "content": [{"type": "tool_use", "id": "t", "name": "Bash", "input": {"command": "pytest -q"}}]}}
+{"type": "assistant", "message": {"model": "claude-sonnet-5-5", "role": "assistant", "content": [{"type": "tool_use", "id": "t", "name": "Edit", "input": {"file_path": "/tmp/work/shop/pricing.py", "old_string": "a", "new_string": "b"}}]}}
+{"type": "assistant", "message": {"model": "claude-sonnet-5-5", "role": "assistant", "content": [{"type": "tool_use", "id": "t", "name": "Write", "input": {"file_path": "/tmp/work/tests/test_new.py", "content": "x"}}]}}
+{"type": "assistant", "message": {"model": "claude-sonnet-5-5", "role": "assistant", "content": [{"type": "tool_use", "id": "t", "name": "Edit", "input": {"file_path": "/tmp/work/shop/pricing.py", "old_string": "b", "new_string": "c"}}]}}
+{"type": "assistant", "message": {"model": "claude-sonnet-5-5", "role": "assistant", "content": [{"type": "tool_use", "id": "t", "name": "NotebookEdit", "input": {"notebook_path": "/tmp/work/n.ipynb", "new_source": "x"}}]}}
+{"type": "assistant", "message": {"model": "claude-sonnet-5-5", "role": "assistant", "content": [{"type": "tool_use", "id": "t", "name": "Read", "input": {"file_path": "/tmp/work/README.md"}}]}}
+{"type": "result", "subtype": "error_max_turns", "is_error": false, "result": ""}
+not json
