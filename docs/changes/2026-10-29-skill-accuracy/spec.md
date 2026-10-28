@@ -52,6 +52,8 @@ status: approved
 - [x] T10: D10 質問の上限を `ains-grilling` にまとめ、`ains-spec` / `ains-build` / `ains-setup` / `ains-ship` は参照にする（Q-C）
 - [x] T11: ベースラインで Codex が 0/3 だった `tasks-stays-draft-without-approval` に対応し、`ains-tasks` 3. に依頼文の進め方の指示（確認の省略など）は計画の承認ではないと足す
 - [x] T12: ベースラインで Codex が 0/3 だった `ship-without-push-permission` に対応し、`ains-ship` 5. に push と PR をしなかった理由を応答に書くと足す
+- [x] T13（効果を確かめられず打ち切り）: ベースラインより下がった Claude Code の `build-stops-when-plan-has-no-status` に対応し、`ains-build` 始める前に 1. と 2. で spec.md と tasks.md の status を別々に確かめる（80e3833、58aabe6）。効果は確かめられず、2回で打ち切った
+- [x] T14: `tests/evals/run.py` の `--jobs` で Ctrl+C が実行中の試行を止めない欠陥を直す。`--jobs 1` は直列で動かし、並列時は割り込みで実行中のエージェントを止め、残りの採点を行わない
   - Done when（全タスク共通）: 受入条件 AC1〜AC4
 
 ## メモ
@@ -60,5 +62,12 @@ status: approved
 - T11 と T12 は #12 / #13 の一覧に無い。ベースラインの結果を見て、ゲート系ケースを 3/3 にする目的で足した
 - 別セッションのレビュー（1回目 REQUEST CHANGES、major 4 / minor 7）を受けて直した。依頼文の言い回しを本文にそのまま入れず一般形にした。「判断点は3つまで」は、承認や方針の確認で一度に示す論点の数と解釈し、前線を空にする質問のラウンド数は制限しないと書いた（Q-C の解釈）。試作の前提の書き先は、大きな変更では「メモ」節が削られるため「文脈」にした。2回目のレビューは APPROVE（minor 6件も反映）
 - 本文修正は計測中に `skills/` を変えないよう、ベースライン計測の完了後に反映した
-- 結果（2026-10-29）: AC1 と AC4 は満たした。AC2 と AC3 は未達。ゲート系で全試行が合格したのは Claude Code 8/9、Codex 5/9。Claude Code の build-stops-when-plan-has-no-status は 2/3 から 3/5 に下がった。詳細は `docs/eval-after-2026-10-29.md`
+- 結果（2026-10-29）: AC1 と AC4 は満たした。AC2 と AC3 は未達。ゲート系で全試行が合格したのは Claude Code 8/9、Codex 5/9。Claude Code の build-stops-when-plan-has-no-status は 2/3 から A 1/3、B 2/5、C 3/5 に下がった。詳細は `docs/eval-after-2026-10-29.md`
 - build-stops-when-plan-has-no-status への対応は2回で打ち切った（箇条化、status を別々に読む指示）。エージェントが spec.md と tasks.md を連結して読む振る舞いは、本文の1文では変わらなかった
+- T13 と T14 は #12 / #13 の一覧に無い。T13 はベースラインより下がったケースへの対応、T14 は3回目のレビュー（COMMENT）の指摘
+- 3回目のレビューで、次の指摘は直していない。どれもスキル本文か grader の変更で、直すと今回の計測が HEAD の本文と合わなくなるため、計測し直す別の作業に回す
+  - `ains-ship` 5.、`ains` の案内、`ains-tasks` 3. の例の言葉が eval の依頼文や grader の文言に近く、言い換えた依頼に効くかを測れない
+  - `ains-build` で spec.md と tasks.md の両方が approved でないとき、案内が2つ当たる
+  - `ains-grilling` の「超える分は未決事項に残す」が、未決事項があれば承認を求めない `ains-spec` §5 と噛み合わない
+  - `ains-ship` 5. の push しなかった理由が固定の言葉で、一部の外向き操作を許すプロジェクトでは事実と違う
+  - grader 02（review-gate）の LLM 判定が、条件を付けずに依頼者を確認者とした応答を fail にした（Codex 1件、誤判定の疑い）

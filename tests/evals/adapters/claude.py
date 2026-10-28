@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import subprocess
 
-from evallib import GIT_ENV, Case, Summary, clip, empty_summary, kill_group
+from evallib import GIT_ENV, Case, Summary, clip, empty_summary, kill_group, track
 
 SKILL_DIR = '.claude/skills/'
 # Pinned so pass rates stay comparable across runs; override with EVAL_CLAUDE_MODEL.
@@ -156,6 +156,7 @@ def run(case: Case, workdir: Path, out_dir: Path) -> Summary:
         s['prompt_sent'], s['error'] = case.prompt, f'cannot start claude: {e}'
         return s
     try:
+        track(proc)
         stdout, stderr = proc.communicate(case.prompt, timeout=case.timeout_seconds)
         if proc.returncode != 0:
             error = f'claude exited with code {proc.returncode}'

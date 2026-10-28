@@ -11,6 +11,7 @@ import re
 import shutil
 import signal
 import subprocess
+import threading
 from typing import Optional, TypedDict
 
 HERE = Path(__file__).resolve().parent
@@ -59,8 +60,37 @@ def git_env():
     return {**os.environ, **GIT_ENV}
 
 
+# Agent processes in flight. Ctrl+C reaches only the main thread, so with --jobs the
+# runner kills these itself; the adapters' own finally runs in worker threads.
+_tracked = set()
+_tracked_lock = threading.Lock()
+_stopping = threading.Event()
+
+
+def track(proc):
+    with _tracked_lock:
+        _tracked.add(proc)
+    if _stopping.is_set():   # started after kill_tracked()
+        kill_group(proc)
+
+
+def stopping():
+    return _stopping.is_set()
+
+
+def kill_tracked():
+    _stopping.set()
+    with _tracked_lock:
+        procs = list(_tracked)
+    for proc in procs:
+        kill_group(proc)
+
+
 def kill_group(proc, sig=signal.SIGKILL):
     """Kill the process group of proc (started with start_new_session); it may be gone already."""
+    if sig == signal.SIGKILL:
+        with _tracked_lock:
+            _tracked.discard(proc)
     try:
         os.killpg(proc.pid, sig)
     except (ProcessLookupError, PermissionError):

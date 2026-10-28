@@ -4,7 +4,7 @@
 
 親 Issue #15。スキル本文（#12、#13）を直す前後で、`tests/evals/` の11ケースを両製品で自動採点した。詳細は [eval-baseline-2026-10-29.md](eval-baseline-2026-10-29.md) と [eval-after-2026-10-29.md](eval-after-2026-10-29.md)。
 
-- 範囲: Claude Code 2.1.312（claude-sonnet-5-5）、codex-cli 0.165.0（gpt-6.1-sol）。各ケース N=3、ains-build の4ケースは修正後に N=5。採点モデルは claude-sonnet-5-5
+- 範囲: Claude Code 2.1.312（claude-sonnet-5-5）、codex-cli 0.165.0（gpt-6.1-sol）。各ケース N=3。修正後は ains-build の4ケースを N=5 で測り直し、build-stops-when-plan-has-no-status は Claude Code だけさらに N=5 で測り直した。採点モデルは claude-sonnet-5-5
 - Codex は `max_turns` と `allowed_tools` を受け取れず、`.git` に書き込めない。「コミットしない」系の判定は Codex では何もしなくても合格する
 - ゲート系9ケースで全試行が合格したのは、修正後で Claude Code 8件、Codex 5件（ベースラインは Claude Code 6件、Codex 2件）。#14 の完了条件（ゲート系の全合格）は両製品とも未達
 - この節は自動採点の結果で、人による確認や、以下の節の実機確認に代わるものではない

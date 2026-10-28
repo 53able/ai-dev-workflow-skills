@@ -81,6 +81,8 @@ def run_one(case, product, trial, adapter, out_dir):
         except Exception as exc:  # noqa: BLE001 - a crashing adapter is an error trial, not a crashed run
             summary['error'] = f'adapter raised {type(exc).__name__}: {exc}'
         # A trial that did not run properly (e.g. skill not invoked) is not graded.
+        if not summary['error'] and evallib.stopping():
+            summary['error'] = 'interrupted'
         if not summary['error']:
             graders = grading.grade(case, workdir, summary, out_dir)
     except Exception as exc:  # noqa: BLE001 - scaffold/grading failure: record it, go on with the next trial
@@ -125,10 +127,19 @@ def main(argv=None, evals_dir=evallib.HERE, workspace=WORKSPACE):
         if args.dry_run:
             for t in trials:
                 dry_run_one(*t)
+        elif args.jobs == 1:
+            results = [run_one(*t) for t in trials]
         else:
             # Each trial has its own temp working copy and out_dir, so trials can overlap.
-            with ThreadPoolExecutor(max_workers=args.jobs) as pool:
+            pool = ThreadPoolExecutor(max_workers=args.jobs)
+            try:
                 results = list(pool.map(lambda t: run_one(*t), trials))
+            except KeyboardInterrupt:
+                pool.shutdown(wait=False, cancel_futures=True)
+                evallib.kill_tracked()
+                raise
+            pool.shutdown()
+        if not args.dry_run:
             import grading
             grading.write_summary(run_dir, results)
     except EvalError as exc:
