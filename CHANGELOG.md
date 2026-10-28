@@ -2,6 +2,22 @@
 
 版の付け方は [README のバージョン](README.md#バージョン)を参照。この節以降はリリース時に semantic-release が更新する。
 
+# [0.3.0](https://github.com/53able/ai-dev-workflow-skills/compare/v0.2.0...v0.3.0) (2026-10-28)
+
+
+### Bug Fixes
+
+* ains-build で spec.md と tasks.md の status を別々に確かめる ([58aabe6](https://github.com/53able/ai-dev-workflow-skills/commit/58aabe6807362da0e79df8aecccff829c72e3eb1))
+* ains-build の承認確認を箇条に分け、status 欄の無い tasks.md で止まる条件を目立たせる ([80e3833](https://github.com/53able/ai-dev-workflow-skills/commit/80e3833eba2906b28223610a87588a6f81699931))
+* eval の並列実行で Ctrl+C が実行中の試行と採点を止めるようにする ([703a074](https://github.com/53able/ai-dev-workflow-skills/commit/703a0741e06673015d173cf16401c4bbccdbf6f6))
+* ゲート判定と質問の上限に関わるスキル本文の欠陥を直す ([#12](https://github.com/53able/ai-dev-workflow-skills/issues/12), [#13](https://github.com/53able/ai-dev-workflow-skills/issues/13)) ([2163f12](https://github.com/53able/ai-dev-workflow-skills/commit/2163f129ee193facc35f39992cc1c01aef246ede)), closes [#11](https://github.com/53able/ai-dev-workflow-skills/issues/11)
+* レビュー指摘を反映し、依頼文の言い回しに頼らない一般形にする ([da8a4e4](https://github.com/53able/ai-dev-workflow-skills/commit/da8a4e4943b9fd0a8178281222671c12f873862a))
+
+
+### Features
+
+* eval 実行系に試行を並列で回す --jobs を追加 ([904e245](https://github.com/53able/ai-dev-workflow-skills/commit/904e2455539d44a963766e7c9ff2c11cf1f0b79a))
+
 # [0.2.0](https://github.com/53able/ai-dev-workflow-skills/compare/v0.1.0...v0.2.0) (2026-10-28)
 
 
