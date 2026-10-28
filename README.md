@@ -109,6 +109,30 @@ npx --yes skills@1.7.4 remove ains ains-setup ains-spec ains-tasks ains-build ai
 
 この名前指定削除は両配置方式で検証し、無関係なスキルが残ることを確認した。削除後は `list -a claude-code codex` で確認する。設定した AGENTS.md / CLAUDE.md や変更成果物の整理は、スキルの削除とは別に判断する。
 
+### バージョン
+
+skills CLI はスキルの版番号を持たず、取得元の git ref と内容のハッシュを利用先の `skills-lock.json` に記録する。このため版は git タグ `vX.Y.Z` で表し、16スキルを1つの版として扱う。スキルごとの版は持たない（一括導入が利用契約のため）。変更内容は [CHANGELOG.md](CHANGELOG.md) に書く。
+
+[Semantic Versioning](https://semver.org/lang/ja/) に従い、次の変更はメジャーを上げる。試用段階の 0.x ではマイナーを上げる。
+
+- スキルの削除・改名、利用者が呼ぶか自動かの区分の変更
+- spec.md / tasks.md の書式や `status` の値など、利用先に残る成果物の互換を壊す変更
+- `scripts/` の引数・終了コードの変更
+
+リモートから版を固定して導入する。利用先を cwd にし、`#` の後にタグを付ける。
+
+```bash
+npx --yes skills@1.7.4 add 53able/ai-dev-workflow-skills#v0.1.0 --skill '*' -a claude-code codex -y
+```
+
+指定した ref は `skills-lock.json` の `ref` に記録される（CLI 1.7.4 で `#main` を指定して確認）。`skills-lock.json` は利用先でコミットする。`update` は記録した ref と照合するため、タグを固定した場合は版が上がらない。版を上げるときは新しいタグで上の add を再実行する。ref を省くと既定ブランチを追い、`update` で最新の内容になる。
+
+リリース手順：
+
+1. `CHANGELOG.md` の `Unreleased` を版番号と日付に置き換える。
+2. 配布検査 `bash tests/distribution/test-distribution.sh` を通す。
+3. main で `git tag -a vX.Y.Z -m vX.Y.Z` を作り、`git push origin vX.Y.Z` で公開する。
+
 ## 設計
 
 方針は [docs/skill-set-design.md](docs/skill-set-design.md)。
