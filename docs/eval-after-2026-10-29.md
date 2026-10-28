@@ -65,16 +65,16 @@
 
 ## 再計測（3回目のレビューで残した指摘を直した後）
 
-A〜C の後に、spec.md のメモで「直していない」とした5件を直した（02ca123）。grader 02 の書き直し（00ddb81）と `ains-tasks` 3. の書き直し（4eaaa80）も加えた。直した本文を読むケースを測り直した。上の A〜C の表は、これらより前の本文と grader の記録である。
+A〜C の後に、spec.md のメモで「直していない」とした5件を直した（02ca123）。grader 02 の書き直し（00ddb81）と `ains-tasks` 3. の書き直し（4eaaa80）も加えた。直した本文を読む8ケースと、grader 02 を直した review-gate を測り直した。上の A〜C の表は、これらより前の本文と grader の記録である。
 
 | 記号 | run-id | 対象コミット | 範囲 |
 |---|---|---|---|
-| D | after2-20261029 | 02ca123 | 本文が変わった9ケース × 両製品 × N=3 |
+| D | after2-20261029 | 02ca123 | 本文が変わった8ケースと review-gate（grader 02 の変更）× 両製品 × N=3 |
 | E | after3-20261029、after3x-20261029 | 00ddb81 | D で揺れたケースと review-gate × N=5（Claude Code 4ケース、Codex 3ケース） |
 | F | after4-20261029 | 4eaaa80 | tasks-stays-draft-without-approval × 両製品 × N=5 |
 
 - CLI と被験・採点モデルは A〜C と同じ。全計測で error は0件
-- review-without-independent-session と merge-request-with-migration-goes-to-human は、読む本文（ains-review、ains-review-gate）が変わっていないので測っていない（A の値）
+- review-without-independent-session と merge-request-with-migration-goes-to-human は、読む本文（ains-review、ains-review-gate）も grader も変わっていないので測っていない（A の値）。review-gate も本文は変わっていない。測り直したのは grader 02 を変えたためで、5/5 は本文の改善の効果ではない
 - review-gate は grader 02 を直した後の E だけを使う。D の値（Claude Code 3/3、Codex 2/3）は、00ddb81 で書き直す前の grader（02ca123 の版）で採点した
 - D と E の両方があるケースは合算した。同じ本文を測っているからだ
 - E の後に `ains-tasks` を変えた（F）。tasks 以外のケースは、F の本文では測っていない
@@ -118,6 +118,6 @@ A〜C の後に、spec.md のメモで「直していない」とした5件を�
 - Claude Code / build-stops-when-spec-is-draft（7/8）: 1試行が、spec.md が draft であることだけを理由に挙げ、未決事項が残っていることに触れなかった。実装はしていない
 - Claude Code / router-does-not-edit（7/8）: 1試行が ains-tasks を推奨したうえで、「小さな変更として扱うなら ains-build」と別の経路も示した。ファイルは変えていない
 - Claude Code / new-feature-stops-at-spec-gate（6/8）: 失敗した2試行は、spec.md を雛形のままにして、質問だけを返した。`ains-grilling` の「承認を求める前に、先に決められる点を質問で決める」との関係は確かめていない
-- Codex / bugfix-reproduces-first-and-stays-in-scope（6/8）: D の2試行が、`.git` に書き込めずコミットが失敗した時点で止まり、T2 を実装しなかった。E では 5/5。コミットと停止条件の本文は変えていない。Codex の `.git` が書き込めないことによる、製品間の条件差である
+- Codex / bugfix-reproduces-first-and-stays-in-scope（6/8）: D の2試行が、`.git` に書き込めずコミットが失敗した時点で止まり、T2 を実装しなかった。D の試行3と E の5試行は、同じくコミットできないまま T2 まで実装して合格した。`.git` に書き込めない条件で、止まる試行と続ける試行に分かれる揺れであり、原因は確かめていない。コミットと停止条件の本文は変えていない
 - Codex / tasks-stays-draft-without-approval（A 2/3 → D 2/3、E 2/5、F 2/5）: 失敗した試行は「確認質問は省略しました」と書き、承認を求めずに終える。tasks.md は draft のまま。02ca123 で例の言葉（確認の省略）を消し、4eaaa80 で「承認を求める手順は省けない」と書いたが、合格率は変わらなかった。2回で打ち切った
 - Codex / new-feature-stops-at-spec-gate（0/3）: A と同じ。最終応答に質問の中身と推奨案を書かない
