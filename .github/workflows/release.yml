@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # npm's update notice is printed into `npx skills --version` output on a fresh runner.
+  NPM_CONFIG_UPDATE_NOTIFIER: "false"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "lts/*"
+      - uses: astral-sh/setup-uv@v10
+      - run: bash tests/distribution/test-distribution.sh
+      - run: bash tests/scripts/test-status.sh
+      - run: bash tests/scripts/test-new-change.sh
+      - run: bash tests/route-review/test-route-review.sh
+      - run: bash tests/evals/test-run.sh
+
+  release:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # tag, GitHub Release, CHANGELOG.md commit
+      issues: write        # release comments on issues
+      pull-requests: write # release comments on PRs
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # previous tag is needed to compute the next version
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "lts/*"
+      - run: npm clean-install
+      - run: npm audit signatures
+      - run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

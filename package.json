@@ -1,0 +1,12 @@
+{
+  "name": "ai-dev-workflow-skills",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "Release tooling only. The skills are distributed by git tag, not by npm.",
+  "license": "MIT",
+  "devDependencies": {
+    "@semantic-release/changelog": "7.0.0",
+    "@semantic-release/git": "11.0.1",
+    "semantic-release": "25.0.9"
+  }
+}
