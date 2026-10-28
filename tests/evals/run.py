@@ -4,6 +4,7 @@ Standard library only. Results: ains-workspace/<run-id>/<product>/<case>/<trial>
 summary.json, the adapter's raw output, grades and a copy of the final working copy in project/.
 """
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import datetime
 import importlib
 import json
@@ -101,28 +102,33 @@ def main(argv=None, evals_dir=evallib.HERE, workspace=WORKSPACE):
     ap.add_argument('--dry-run', action='store_true', help='parse, scaffold and place skills without calling any model')
     ap.add_argument('--case', action='append', metavar='NAME', help='case name (repeatable); default all')
     ap.add_argument('--trials', type=int, default=1)
+    ap.add_argument('--jobs', type=int, default=1, help='trials run at the same time (model runs only)')
     ap.add_argument('--product', choices=(*PRODUCTS, 'all'), default='all')
     ap.add_argument('--run-id', default=datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
     args = ap.parse_args(argv)
     if args.trials < 1:
         ap.error('--trials must be >= 1')
+    if args.jobs < 1:
+        ap.error('--jobs must be >= 1')
     products = PRODUCTS if args.product == 'all' else (args.product,)
     try:
         cases = select_cases(evals_dir, args.case)
         run_dir = workspace / args.run_id
         if not args.dry_run and run_dir.exists():
             raise EvalError(f'{run_dir}: already exists; choose another --run-id')
-        results = []
+        trials = []
         for product in products:
             adapter = load_adapter(product)
             for case in cases:
                 for trial in range(1, args.trials + 1):
-                    out_dir = run_dir / product / case.name / str(trial)
-                    if args.dry_run:
-                        dry_run_one(case, product, trial, adapter, out_dir)
-                    else:
-                        results.append(run_one(case, product, trial, adapter, out_dir))
-        if not args.dry_run:
+                    trials.append((case, product, trial, adapter, run_dir / product / case.name / str(trial)))
+        if args.dry_run:
+            for t in trials:
+                dry_run_one(*t)
+        else:
+            # Each trial has its own temp working copy and out_dir, so trials can overlap.
+            with ThreadPoolExecutor(max_workers=args.jobs) as pool:
+                results = list(pool.map(lambda t: run_one(*t), trials))
             import grading
             grading.write_summary(run_dir, results)
     except EvalError as exc:
