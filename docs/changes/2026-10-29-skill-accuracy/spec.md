@@ -40,22 +40,23 @@ status: approved
 ## タスク
 
 方式：本文を直接直す。質問の上限は `ains-grilling` の「上限」節に置き、他のスキルからは参照だけにする。
-- [ ] T1: D1 `ains-review-gate` マージの条件に承認の定義を足す（Q-A）
-- [ ] T2: D2 `ains-spec` §5 を箇条に分け、未決事項の有無で分岐させる。grader 04 を Q-B に合わせる
-- [ ] T3: D3 `ains-build` 始める前に 2 に、spec が approved でないときに止まる規則を足す
-- [ ] T4: D5 `ains` 案内だけを行いファイルを変えないことを明記し、1行修正の例外と完了条件の矛盾を解く
-- [ ] T5: D4 `ains-ship` 1. の修正に build の試行上限と範囲制限をかける
-- [ ] T6: D6 `ains-spec` 1. と `sdd-tools.md` の置き場所を「変更の置き場所」に揃える
-- [ ] T7: D7 `ains-tasks` spec へ差し戻すとき spec.md と tasks.md を draft に戻す
-- [ ] T8: D8 `prototype.md` 試作の前提を spec.md の「メモ」に書き、コミットは許可があるときだけにする
-- [ ] T9: D9 `ains-retro` 再現テストを spec 承認後の build で書く順序にする
-- [ ] T10: D10 質問の上限を `ains-grilling` にまとめ、`ains-spec` / `ains-build` / `ains-setup` / `ains-ship` は参照にする（Q-C）
-- [ ] T11: ベースラインで Codex が 0/3 だった `tasks-stays-draft-without-approval` に対応し、`ains-tasks` 3. に「確認なしで進めて」は計画の承認ではないと足す
-- [ ] T12: ベースラインで Codex が 0/3 だった `ship-without-push-permission` に対応し、`ains-ship` 5. に push と PR をしなかった理由を応答に書くと足す
+- [x] T1: D1 `ains-review-gate` マージの条件に承認の定義を足す（Q-A）
+- [x] T2: D2 `ains-spec` §5 を箇条に分け、未決事項の有無で分岐させる。grader 04 を Q-B に合わせる
+- [x] T3: D3 `ains-build` 始める前に 2 に、spec が approved でないときに止まる規則を足す
+- [x] T4: D5 `ains` 案内だけを行いファイルを変えないことを明記し、1行修正の例外と完了条件の矛盾を解く
+- [x] T5: D4 `ains-ship` 1. の修正に build の試行上限と範囲制限をかける
+- [x] T6: D6 `ains-spec` 1. と `sdd-tools.md` の置き場所を「変更の置き場所」に揃える
+- [x] T7: D7 `ains-tasks` spec へ差し戻すとき spec.md と tasks.md を draft に戻す
+- [x] T8: D8 `prototype.md` 試作の前提を spec.md の「文脈」に書き、コミットは Agent skills 節で許されたときだけにする
+- [x] T9: D9 `ains-retro` 再現テストを spec 承認後の build で書く順序にする
+- [x] T10: D10 質問の上限を `ains-grilling` にまとめ、`ains-spec` / `ains-build` / `ains-setup` / `ains-ship` は参照にする（Q-C）
+- [x] T11: ベースラインで Codex が 0/3 だった `tasks-stays-draft-without-approval` に対応し、`ains-tasks` 3. に依頼文の進め方の指示（確認の省略など）は計画の承認ではないと足す
+- [x] T12: ベースラインで Codex が 0/3 だった `ship-without-push-permission` に対応し、`ains-ship` 5. に push と PR をしなかった理由を応答に書くと足す
   - Done when（全タスク共通）: 受入条件 AC1〜AC4
 
 ## メモ
 
 - 承認: #11 の決定と、2026-10-29 に利用者が #12〜#14 まで進めることを承認した回答による
 - T11 と T12 は #12 / #13 の一覧に無い。ベースラインの結果を見て、ゲート系ケースを 3/3 にする目的で足した
+- 別セッションのレビュー（1回目 REQUEST CHANGES、major 4 / minor 7）を受けて直した。依頼文の言い回しを本文にそのまま入れず一般形にした。「判断点は3つまで」は、承認や方針の確認で一度に示す論点の数と解釈し、前線を空にする質問のラウンド数は制限しないと書いた（Q-C の解釈）。試作の前提の書き先は、大きな変更では「メモ」節が削られるため「文脈」にした。2回目のレビューは APPROVE（minor 6件も反映）
 - 本文修正は計測中に `skills/` を変えないよう、ベースライン計測の完了後に反映した
