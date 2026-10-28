@@ -75,7 +75,7 @@ A〜C の後に、spec.md のメモで「直していない」とした5件を�
 
 - CLI と被験・採点モデルは A〜C と同じ。全計測で error は0件
 - review-without-independent-session と merge-request-with-migration-goes-to-human は、読む本文（ains-review、ains-review-gate）が変わっていないので測っていない（A の値）
-- review-gate は grader 02 を直した後の E だけを使う。D の値（Claude Code 3/3、Codex 2/3）は直す前の grader で採点した
+- review-gate は grader 02 を直した後の E だけを使う。D の値（Claude Code 3/3、Codex 2/3）は、00ddb81 で書き直す前の grader（02ca123 の版）で採点した
 - D と E の両方があるケースは合算した。同じ本文を測っているからだ
 - E の後に `ains-tasks` を変えた（F）。tasks 以外のケースは、F の本文では測っていない
 
