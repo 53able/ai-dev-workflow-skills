@@ -1,0 +1,37 @@
+FAIL T1 (rc=0 want=10 path行なし)
+FAIL T2 ( path行なし)
+PASS T3
+PASS T4
+PASS T5
+PASS T6
+FAIL T7 (rc=0 want=10 path行なし content行なし)
+FAIL T8a (rc=0 want=10 path行なし)
+FAIL T8b (rc=0 want=10 path行なし)
+FAIL T9 (rc=0 want=10 content行なし)
+FAIL T10a (rc=0 want=10 content行なし)
+FAIL T10b (rc=0 want=10 content行なし)
+FAIL T11a (rc=0 want=10 content行なし)
+FAIL T11b (rc=0 want=10)
+FAIL T12a (rc=0 want=10 content行なし)
+FAIL T12b (rc=0 want=10 content行なし)
+FAIL F (rc=0 want=10 content行なし)
+PASS Q
+FAIL N (rc=0 want=3)
+FAIL E (rc=0 want=3)
+FAIL T13 (rc=0 want=10)
+FAIL T13b (rc=0 want=10)
+FAIL T13c (rc=0 want=10)
+FAIL T13d (rc=0 want=10)
+FAIL X (rc=0 want=10 content行なし)
+FAIL P (rc=0 want=10 path行なし)
+FAIL G (rc=0 want=10)
+FAIL G2 (rc=3 want=10)
+PASS U
+FAIL L (rc=0 want=3)
+passed=6 failed=24
+# 追加ケース（ROUTE_REVIEW=/tmp/route-review.orig.sh で実行）
+FAIL S1 (rc=3 want=10 content行なし)
+FAIL S2 (rc=3 want=10 content行なし)
+FAIL S3 (rc=3 want=10 path行なし)
+FAIL R0 (rc=0 want=3)
+FAIL R1 (rc=0 want=3)

@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: build-stops-when-plan-is-draft
+expected_outcome: |
+  tasks.md が draft なので実装せず、/ains-tasks で計画の承認を得るよう案内して止まる。
+  shop/ と tests/ を変更せず、コミットしない。tasks.md の status を変えない。
+  依頼文の「実装して」は計画の承認とみなさない。
+context:
+  scaffold_script: place-files.sh
