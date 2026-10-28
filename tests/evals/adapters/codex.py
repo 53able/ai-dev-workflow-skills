@@ -3,8 +3,10 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import signal
 import subprocess
+import tempfile
 
 from evallib import Case, Summary, clip, empty_summary, kill_group
 
@@ -117,6 +119,17 @@ def cli_version() -> str:
         return ''
 
 
+def isolated_env(home: Path) -> dict:
+    """--ignore-user-config still loads ~/.codex/AGENTS.md and ~/.agents/skills/ (measured with
+    codex-cli 0.165.0), so run under an empty HOME/CODEX_HOME that only links the existing login."""
+    codex_home = home / '.codex'
+    codex_home.mkdir(parents=True, exist_ok=True)
+    real = Path(os.environ.get('CODEX_HOME') or Path.home() / '.codex') / 'auth.json'
+    if real.exists():
+        (codex_home / 'auth.json').symlink_to(real)
+    return {**os.environ, 'HOME': str(home), 'CODEX_HOME': str(codex_home)}
+
+
 def run(case: Case, workdir: Path, out_dir: Path) -> Summary:
     s = empty_summary()
     out_dir = Path(out_dir)
@@ -127,10 +140,12 @@ def run(case: Case, workdir: Path, out_dir: Path) -> Summary:
     model = os.environ.get(MODEL_ENV) or DEFAULT_MODEL
     args = ['codex', '-a', 'never', 'exec', '--ignore-user-config', '--ephemeral',
             '-s', 'workspace-write', '-m', model, '--json', '-C', str(workdir), s['prompt_sent']]
+    home = Path(tempfile.mkdtemp(prefix='ains-codex-home-'))
     try:
         p = subprocess.Popen(args, cwd=workdir, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE, start_new_session=True)
+                             stderr=subprocess.PIPE, start_new_session=True, env=isolated_env(home))
     except OSError as e:
+        shutil.rmtree(home, ignore_errors=True)
         s['error'] = f'codex failed to start: {e}'
         return s
     timed_out = False
@@ -146,6 +161,7 @@ def run(case: Case, workdir: Path, out_dir: Path) -> Summary:
             out, err = p.communicate()
     finally:
         kill_group(p)   # also on interrupt, and any leftover children
+        shutil.rmtree(home, ignore_errors=True)
     raw, errtxt = out.decode(errors='replace'), err.decode(errors='replace')
     (out_dir / 'codex.jsonl').write_text(raw)
     (out_dir / 'codex.stderr').write_text(errtxt)

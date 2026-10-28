@@ -1,7 +1,10 @@
 """codex adapter tests on saved JSONL samples; no model is called."""
 import json
+import os
 from pathlib import Path
+import tempfile
 import unittest
+from unittest import mock
 
 import evallib
 from adapters import codex
@@ -84,6 +87,19 @@ class SummaryTests(unittest.TestCase):
         ok = codex.summarize_jsonl((FIX / 'invoked.jsonl').read_text())['timeline']
         self.assertEqual(sum(e['type'] == 'tool_result' for e in ok), 2)
         self.assertFalse(any(e.get('is_error') for e in ok))
+
+
+class IsolatedEnvTests(unittest.TestCase):
+    def test_home_and_codex_home_point_at_empty_dir_with_login_link(self):
+        with tempfile.TemporaryDirectory() as real, tempfile.TemporaryDirectory() as tmp:
+            Path(real, 'auth.json').write_text('{}')
+            Path(real, 'AGENTS.md').write_text('user instructions')
+            with mock.patch.dict(os.environ, {'CODEX_HOME': real}):
+                env = codex.isolated_env(Path(tmp))
+            self.assertEqual(env['HOME'], tmp)
+            self.assertEqual(env['CODEX_HOME'], str(Path(tmp, '.codex')))
+            self.assertEqual(sorted(p.name for p in Path(tmp, '.codex').iterdir()), ['auth.json'])
+            self.assertEqual(Path(tmp, '.codex', 'auth.json').resolve(), Path(real, 'auth.json').resolve())
 
 
 if __name__ == '__main__':
