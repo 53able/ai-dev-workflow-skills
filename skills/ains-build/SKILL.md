@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 ## 始める前に
 
-1. spec.md と tasks.md を読む（小さな変更は spec.md の「タスク」節）。前のセッションの記憶より、ファイルを信じる。
+1. spec.md と tasks.md を読む（小さな変更は spec.md の「タスク」節）。前のセッションの記憶より、ファイルを信じる。status はファイルごとに別々に読んで確かめる。連結して読むと、どちらの front matter かを取り違える。
 2. 承認を確かめる。どちらかが approved でなければ、実装もコミットもせず、1行で案内して止まる。
    - spec.md が `status: approved` でなければ（draft、status 欄が無いものを含む）、ains-spec で仕様の承認を得るよう案内する。spec.md を approved にするのは ains-spec だけだ
    - tasks.md があり、`status: approved` でなければ（draft、front matter や status 欄が無いものを含む）、ains-tasks で計画の承認を得るよう案内する。tasks.md を approved にするのは ains-tasks だけだ
