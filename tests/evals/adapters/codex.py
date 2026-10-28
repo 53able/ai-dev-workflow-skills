@@ -8,7 +8,7 @@ import signal
 import subprocess
 import tempfile
 
-from evallib import GIT_ENV, Case, Summary, clip, empty_summary, kill_group
+from evallib import GIT_ENV, Case, Summary, clip, empty_summary, kill_group, track
 
 SKILL_DIR = '.agents/skills/'
 DEFAULT_MODEL = 'gpt-6.1-sol'   # same fixed model as tests/runtime/codex/runtime.py
@@ -150,6 +150,7 @@ def run(case: Case, workdir: Path, out_dir: Path) -> Summary:
         return s
     timed_out = False
     try:
+        track(p)
         out, err = p.communicate(timeout=case.timeout_seconds)
     except subprocess.TimeoutExpired:
         timed_out = True

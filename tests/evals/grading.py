@@ -13,7 +13,7 @@ import shutil
 import subprocess
 import tempfile
 
-from evallib import Case, Summary, git_env
+from evallib import Case, Summary, git_env, stopping
 
 # One grading model for every product under test, so pass rates are comparable.
 GRADER_MODEL = os.environ.get('EVAL_GRADER_MODEL', 'claude-sonnet-5-5')
@@ -161,7 +161,9 @@ def grade(case: Case, workdir: Path, summary: Summary, out_dir: Path, llm=None) 
     evidence.mkdir(exist_ok=True)
     results = []
     for g in sorted(case.graders, key=lambda g: g.id):
-        if g.type == 'command':
+        if stopping():
+            results.append(_result(g, 'error', 'interrupted'))
+        elif g.type == 'command':
             results.append(grade_command(g, workdir, evidence))
         elif g.type == 'llm':
             results.append(grade_llm(case, g, workdir, summary, evidence, llm))

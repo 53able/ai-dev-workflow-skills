@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import threading
 import unittest
 from unittest import mock
 
@@ -216,6 +217,54 @@ class EvalTests(unittest.TestCase):
         self.assertIn('| claude | runner exception | 1 |', (self.root / 'ws' / 'r2' / 'summary.md').read_text())
         self.assertEqual(code, 2)
         self.assertIn('already exists', err)
+
+    def test_cli_jobs_runs_every_trial_once(self):
+        self.make_case(graders={'01-a.md': CMD_GRADER})
+        seen = []
+
+        class Agent:
+            SKILL_DIR = '.claude/skills/'
+
+            def run(self, case, workdir, out_dir):
+                seen.append(out_dir)
+                return evallib.empty_summary()
+        with mock.patch.object(run, 'load_adapter', return_value=Agent()):
+            code, _, err = self.cli('--trials', '3', '--jobs', '4', '--run-id', 'r1')
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(seen), 6)
+        self.assertEqual(len(set(seen)), 6)
+        text = (self.root / 'ws' / 'r1' / 'summary.md').read_text()
+        self.assertIn('| claude | sample | 3/3 | 0 | 0 | 3 |', text)
+        self.assertIn('| codex | sample | 3/3 | 0 | 0 | 3 |', text)
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            self.cli('--jobs', '0')
+
+    def test_cli_jobs_interrupt_kills_running_agents(self):
+        self.make_case(graders={'01-a.md': CMD_GRADER})
+        started, procs = threading.Event(), []
+
+        class Agent:
+            SKILL_DIR = '.claude/skills/'
+
+            def run(self, case, workdir, out_dir):
+                if out_dir.name == '1':
+                    started.wait(10)
+                    raise KeyboardInterrupt
+                p = subprocess.Popen(['sleep', '30'], start_new_session=True)
+                procs.append(p)
+                evallib.track(p)
+                started.set()
+                p.wait()
+                return evallib.empty_summary()
+        with mock.patch.object(run, 'load_adapter', return_value=Agent()), \
+                mock.patch.object(evallib, '_stopping', threading.Event()):
+            with self.assertRaises(KeyboardInterrupt):
+                self.cli('--product', 'claude', '--trials', '2', '--jobs', '2', '--run-id', 'r1')
+            self.assertEqual(procs[0].wait(5), -9)
+            for t in threading.enumerate():
+                if t.name.startswith('ThreadPoolExecutor'):
+                    t.join(5)
+        self.assertFalse((self.root / 'ws' / 'r1' / 'claude' / 'sample' / '2' / 'grades.json').exists())
 
     def test_scalar_followed_by_blank_line(self):
         c = evallib.load_case(self.make_case(yaml=CASE_YAML.replace('name: sample\n', 'name: sample\n\n'),
