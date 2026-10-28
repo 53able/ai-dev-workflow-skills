@@ -1,10 +1,14 @@
 """Runner skeleton tests; no model is called."""
 import contextlib
 import io
+import json
+import os
 from pathlib import Path
 import shutil
+import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 import evallib
 import run
@@ -18,6 +22,7 @@ context:
 '''
 PROMPT = '---\ntags: [x]\nmax_turns: 5\ntimeout_seconds: 60\nallowed_tools: [Read, Bash]\n---\n\ndo it\n'
 GRADER = '---\ntype: llm\nfocus: trace\nweight: 1\n---\n\ncheck\n'
+CMD_GRADER = '---\ntype: command\nrun: test -f a.txt\n---\n\na.txt exists\n'
 PLACE = '#!/usr/bin/env bash\nset -eu\necho hi > a.txt\ngit init -q -b main && git add -A && git -c user.name=e -c user.email=e@x commit -qm i\n'
 
 
@@ -143,9 +148,97 @@ class EvalTests(unittest.TestCase):
                 s['error'] = 'skill not invoked'
                 return s
         for adapter, msg in ((Boom(), 'adapter raised RuntimeError'), (NotInvoked(), 'skill not invoked')):
-            r = run.run_one(case, 'claude', 1, adapter, self.root / 'o' / msg[:5])
+            out = self.root / 'o' / msg[:5]
+            r = run.run_one(case, 'claude', 1, adapter, out)
             self.assertEqual(r['graders'], [])
             self.assertIn(msg, r['summary']['error'])
+            saved = json.loads((out / 'summary.json').read_text())
+            self.assertEqual(set(saved), set(evallib.SUMMARY_KEYS))
+            self.assertIn(msg, saved['error'])
+            self.assertTrue((out / 'project' / '.git').is_dir())
+
+    def test_run_one_works_outside_home_and_keeps_a_copy(self):
+        case = evallib.load_case(self.make_case(graders={'01-a.md': CMD_GRADER}))
+        seen = {}
+
+        class Agent:
+            SKILL_DIR = '.claude/skills/'
+
+            def run(self, case, workdir, out_dir):
+                seen['workdir'] = workdir
+                (workdir / 'b.txt').write_text('agent\n')
+                s = evallib.empty_summary()
+                s['prompt_sent'] = 'SENT'
+                return s
+        out = self.root / 'o'
+        r = run.run_one(case, 'claude', 1, Agent(), out)
+        self.assertEqual([g['status'] for g in r['graders']], ['pass'])
+        self.assertFalse(seen['workdir'].is_relative_to(Path.home().resolve()))
+        self.assertFalse(seen['workdir'].exists())   # temp copy removed
+        self.assertEqual(json.loads((out / 'summary.json').read_text())['prompt_sent'], 'SENT')
+        self.assertEqual((out / 'project' / 'b.txt').read_text(), 'agent\n')
+        log = subprocess.run(['git', 'log', '--format=%s'], cwd=out / 'project', text=True, capture_output=True)
+        self.assertEqual(log.stdout, 'i\n')
+        self.assertTrue((out / 'grades.json').is_file())
+
+    def test_temp_dir_under_home_is_refused(self):
+        with mock.patch.object(Path, 'home', return_value=Path(tempfile.gettempdir())):
+            with self.assertRaises(evallib.EvalError):
+                run.make_tmp()
+
+    def test_cli_continues_after_a_crashing_trial_and_refuses_reused_run_id(self):
+        self.make_case(graders={'01-a.md': CMD_GRADER})
+        calls = []
+
+        class Flaky:
+            SKILL_DIR = '.claude/skills/'
+
+            def run(self, case, workdir, out_dir):
+                calls.append(out_dir)
+                if len(calls) == 1:
+                    raise RuntimeError('first trial crashed')
+                return evallib.empty_summary()
+
+        def failing_grade(*a, **k):
+            raise OSError('disk full')
+        with mock.patch.object(run, 'load_adapter', return_value=Flaky()):
+            code, _, err = self.cli('--product', 'claude', '--trials', '3', '--run-id', 'r1')
+            self.assertEqual(code, 0, err)
+            import grading
+            with mock.patch.object(grading, 'grade', failing_grade):
+                code, _, err = self.cli('--product', 'claude', '--trials', '1', '--run-id', 'r2')
+            self.assertEqual(code, 0, err)
+            code, _, err = self.cli('--product', 'claude', '--run-id', 'r1')
+        self.assertEqual(len(calls), 4)
+        text = (self.root / 'ws' / 'r1' / 'summary.md').read_text()
+        self.assertIn('| claude | sample | 2/3 | 0 | 1 | 3 |', text)
+        self.assertIn('| claude | adapter exception | 1 |', text)
+        self.assertIn('| claude | runner exception | 1 |', (self.root / 'ws' / 'r2' / 'summary.md').read_text())
+        self.assertEqual(code, 2)
+        self.assertIn('already exists', err)
+
+    def test_scalar_followed_by_blank_line(self):
+        c = evallib.load_case(self.make_case(yaml=CASE_YAML.replace('name: sample\n', 'name: sample\n\n'),
+                                             prompt=PROMPT.replace('max_turns: 5\n', 'max_turns: 5\n\n')))
+        self.assertEqual((c.name, c.max_turns), ('sample', 5))
+        self.assert_invalid('expected a one-line value', yaml=CASE_YAML.replace('name: sample\n', 'name: sample\n  more\n'))
+
+    def test_place_skills_creates_git_info(self):
+        wd = self.root / 'wd'
+        subprocess.run(['git', 'init', '-q', wd], check=True)
+        shutil.rmtree(wd / '.git' / 'info')
+        evallib.place_skills(wd, '.claude/skills/', self.skills)
+        self.assertIn('/.claude/skills/', (wd / '.git' / 'info' / 'exclude').read_text())
+        out = subprocess.run(['git', 'status', '--porcelain'], cwd=wd, text=True, capture_output=True).stdout
+        self.assertEqual(out, '')
+
+    def test_scaffold_ignores_user_git_config(self):
+        cfg = self.root / 'gitconfig'
+        cfg.write_text('[commit]\n\tgpgsign = true\n[gpg]\n\tprogram = false\n')
+        c = evallib.load_case(self.make_case())
+        with mock.patch.dict(os.environ, {'GIT_CONFIG_GLOBAL': str(cfg)}):
+            evallib.scaffold(c, self.root / 'wd', '.claude/skills/', self.skills)
+        self.assertTrue((self.root / 'wd' / '.git' / 'HEAD').is_file())
 
 
 if __name__ == '__main__':

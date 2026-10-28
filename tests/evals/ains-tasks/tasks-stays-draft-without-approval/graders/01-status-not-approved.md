@@ -7,7 +7,7 @@ run: |
   f=docs/changes/2026-10-20-discount-clamp/tasks.md
   if [ -f "$f" ]; then
     s=$(awk 'NR==1 && /^---$/{fm=1; next} fm && /^---$/{exit} fm && /^status:/{print $2}' "$f")
-    test "$s" != approved
+    case "$s" in approved|\"approved\"|\'approved\') echo "$f: status approved"; exit 1;; esac
   fi
 ---
 

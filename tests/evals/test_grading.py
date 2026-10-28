@@ -1,10 +1,12 @@
 """Grading tests; the LLM is always a stub, no model is called."""
 import datetime
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 import evallib
 import grading
@@ -32,7 +34,7 @@ class GradingTests(unittest.TestCase):
 
     def case(self, graders):
         c = object.__new__(evallib.Case)
-        c.__dict__.update(name='c', expected_outcome='stops', graders=graders)
+        c.__dict__.update(name='c', expected_outcome='stops', prompt='REQUEST-MARK', graders=graders)
         return c
 
     def grade(self, graders, llm, summary=None):
@@ -58,10 +60,12 @@ class GradingTests(unittest.TestCase):
         s = evallib.empty_summary()
         s['final_response'] = 'FINAL-MARK'
         s['prompt_sent'] = 'SECRET-PROMPT'
+        s['timeline'] = [{'type': 'tool_result', 'output': 'FAILED-BEFORE-FIX', 'is_error': True}]
         seen = []
         self.grade([make_grader('01', 'llm', body='RUBRIC-MARK')], lambda p: seen.append(p) or '{"pass":false,"reason":"r"}', s)
         p = seen[0]
-        for needle in ('RUBRIC-MARK', 'stops', 'FINAL-MARK', 'untracked-marker', 'init'):
+        for needle in ('RUBRIC-MARK', 'stops', 'FINAL-MARK', 'untracked-marker', 'init', 'REQUEST-MARK',
+                       'FAILED-BEFORE-FIX'):
             self.assertIn(needle, p)
         self.assertNotIn('SECRET-PROMPT', p)
         self.assertEqual((self.out / 'graders' / '01.prompt.md').read_text(), p)
@@ -104,21 +108,71 @@ class GradingTests(unittest.TestCase):
             s = evallib.empty_summary()
             s.update(cli_version='1.2.3', model='m-x', error=error, ignored_options=list(ignored))
             return s
-        g = lambda *st: [{'grader': f'g{i}', 'type': 'command', 'status': x, 'reason': 'r'} for i, x in enumerate(st)]
+        g = lambda *st: [{'grader': f'g{i}', 'type': 'command', 'status': x, 'reason': 'timeout after 120s'}
+                         for i, x in enumerate(st)]
         results = [
             {'product': 'claude', 'case': 'c1', 'trial': 1, 'graders': g('pass', 'pass'), 'summary': summ()},
             {'product': 'claude', 'case': 'c1', 'trial': 2, 'graders': g('pass', 'fail'), 'summary': summ()},
             {'product': 'claude', 'case': 'c1', 'trial': 3, 'graders': g('pass', 'error'), 'summary': summ()},
             {'product': 'codex', 'case': 'c1', 'trial': 1, 'graders': [], 'summary': summ('skill not invoked', ['--max-turns'])},
-            {'product': 'codex', 'case': 'c1', 'trial': 2, 'graders': [], 'summary': summ('skill not invoked', ['--max-turns'])},
+            {'product': 'codex', 'case': 'c1', 'trial': 2, 'graders': [], 'summary': summ('skill not invoked: ains-x', ['--max-turns'])},
         ]
+        results[1]['summary']['commands'] = ['ls', "/bin/zsh -lc 'git -c user.name=x commit -qm wip'"]
         run_dir = Path(self.tmp.name) / 'run-1'
         grading.write_summary(run_dir, results, now=datetime.datetime(2026, 1, 2, 3, 4, 5, tzinfo=datetime.timezone.utc))
         text = (run_dir / 'summary.md').read_text()
         for needle in ('| claude | c1 | 1/3 | 1 | 1 | 3 |', '| codex | c1 | 0/2 | 0 | 2 | 2 |',
-                       '| codex | skill not invoked | 2 |', '| claude | g1: r | 1 |', '1.2.3', 'm-x',
-                       '--max-turns', '2026-01-02T03:04:05+00:00', grading.GRADER_MODEL, 'run-1'):
+                       '| codex | skill not invoked | 2 |', '| claude | grader timeout | 1 |', '1.2.3', 'm-x',
+                       '--max-turns', '2026-01-02T03:04:05+00:00', grading.GRADER_MODEL, 'run-1',
+                       '| claude | 1.2.3 | m-x | none | 1 |', "- claude/c1/2: `/bin/zsh -lc 'git -c user.name=x commit"):
             self.assertIn(needle, text)
+
+    def test_error_category(self):
+        cases = {
+            'timeout after 900s': 'timeout', 'claude exited with code 1: boom': 'exit',
+            'codex exited with 2: x': 'exit', 'max_turns: result error_max_turns: ': 'max_turns',
+            'skill not invoked: ains-build': 'skill not invoked', 'invalid grader output: not JSON': 'invalid grader output',
+            'llm call failed: down': 'llm call failed', 'adapter raised RuntimeError: x': 'adapter exception',
+            'runner raised EvalError: x': 'runner exception', 'cannot start claude: x': 'start failed',
+            'unexpected context: tools outside allowed_tools: Agent': 'unexpected context', 'result error_x: y': 'other',
+        }
+        for msg, cat in cases.items():
+            self.assertEqual(grading.error_category(msg), cat, msg)
+
+    def test_git_write_attempts(self):
+        cmds = ['git commit -m x', "/bin/zsh -lc 'git -c a=b push origin x'", 'git -C sub merge main',
+                'git status', 'git log --oneline', 'echo commit', 'cat .git/COMMIT_EDITMSG']
+        self.assertEqual(grading.git_write_attempts(cmds), cmds[:3])
+
+    def test_llm_then_command_does_not_touch_index(self):
+        # A pyc left untracked in a committed directory must not fail a later command grader.
+        git = ['git', '-c', 'user.name=e', '-c', 'user.email=e@x']
+        (self.work / 'app').mkdir()
+        (self.work / 'app' / 'm.py').write_text('x = 1\n')
+        subprocess.run(['git', 'add', '-A'], cwd=self.work, check=True)
+        subprocess.run([*git, 'commit', '-q', '--amend', '--no-edit'], cwd=self.work, check=True)
+        (self.work / 'app' / '__pycache__').mkdir()
+        (self.work / 'app' / '__pycache__' / 'm.cpython-312.pyc').write_bytes(b'\x00PYC-MARK\x00')
+        (self.work / 'blob.bin').write_bytes(b'\x00BIN-MARK\x00')
+        before = subprocess.run(['git', 'ls-files', '--stage'], cwd=self.work, text=True, capture_output=True).stdout
+        seen = []
+        run = 'git diff --quiet $(git rev-list --max-parents=0 HEAD) -- app'
+        res = self.grade([make_grader('01-llm', 'llm'), make_grader('02-cmd', 'command', run=run)],
+                         lambda p: seen.append(p) or '{"pass": true, "reason": "r"}')
+        self.assertEqual([r['status'] for r in res], ['pass', 'pass'])
+        after = subprocess.run(['git', 'ls-files', '--stage'], cwd=self.work, text=True, capture_output=True).stdout
+        self.assertEqual(before, after)
+        self.assertIn('Binary files /dev/null and b/blob.bin differ', seen[0])   # untracked, shown as binary
+        self.assertNotIn('PYC-MARK', seen[0])
+        self.assertNotIn('__pycache__', seen[0])
+        self.assertNotIn('BIN-MARK', seen[0])
+
+    def test_command_grader_ignores_user_git_config(self):
+        cfg = Path(self.tmp.name) / 'gitconfig'
+        cfg.write_text('[eval]\n\tmarker = user\n')
+        with mock.patch.dict(os.environ, {'GIT_CONFIG_GLOBAL': str(cfg)}):
+            res = self.grade([make_grader('01', 'command', run='! git config eval.marker')], None)
+        self.assertEqual(res[0]['status'], 'pass')
 
 
 if __name__ == '__main__':

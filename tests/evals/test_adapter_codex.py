@@ -1,7 +1,9 @@
 """codex adapter tests on saved JSONL samples; no model is called."""
+import json
 from pathlib import Path
 import unittest
 
+import evallib
 from adapters import codex
 
 FIX = Path(__file__).resolve().parent / 'fixtures' / 'codex'
@@ -53,6 +55,35 @@ class SummaryTests(unittest.TestCase):
                '{"type":"item.completed","item":{"type":"file_change","changes":'
                '[{"path":"a.py","kind":"update"},{"path":"a.py","kind":"update"},{"path":"b.py"}]}}\n')
         self.assertEqual(codex.summarize_jsonl(raw)['edited_files'], ['a.py', 'b.py'])
+
+    def test_only_working_copy_skill_md_counts(self):
+        def cmd(c):
+            return json.dumps({'type': 'item.completed', 'item': {'type': 'command_execution', 'command': c}}) + '\n'
+        raw = ''.join(cmd(c) for c in (
+            "/bin/zsh -lc 'cat /Users/u/.codex/skills/ains-a/SKILL.md'",
+            "/bin/zsh -lc 'cat /elsewhere/.agents/skills/ains-b/SKILL.md'",
+            "/bin/zsh -lc 'cat skills/ains-c/SKILL.md'",
+            "/bin/zsh -lc 'cat ./.agents/skills/ains-d/SKILL.md'",
+            "/bin/zsh -lc \"sed -n 1,80p /w/.agents/skills/ains-e/SKILL.md\"",
+            "/bin/zsh -lc 'cd .agents/skills/ains-f && cat SKILL.md'",
+            "/bin/zsh -lc 'cd /elsewhere/.agents/skills/ains-g; cat SKILL.md'",
+        ))
+        self.assertEqual(codex.invoked_skills(raw, Path('/w')), ['ains-d', 'ains-e', 'ains-f'])
+        self.assertEqual(codex.invoked_skills(raw), ['ains-d', 'ains-f'])
+
+    def test_timeline(self):
+        raw = ('{"type":"item.completed","item":{"type":"command_execution","command":"pytest -q",'
+               '"aggregated_output":"' + 'E' * 3000 + '","exit_code":1}}\n'
+               '{"type":"item.completed","item":{"type":"file_change","changes":[{"path":"a.py"}]}}\n')
+        t = codex.summarize_jsonl(raw)['timeline']
+        self.assertEqual([(e['type'], e.get('name')) for e in t],
+                         [('tool_use', 'shell'), ('tool_result', None), ('tool_use', 'file_change')])
+        self.assertTrue(t[1]['is_error'])
+        self.assertLess(len(t[1]['output']), evallib.TIMELINE_CHARS + 50)
+        self.assertEqual(t[2]['input'], 'a.py')
+        ok = codex.summarize_jsonl((FIX / 'invoked.jsonl').read_text())['timeline']
+        self.assertEqual(sum(e['type'] == 'tool_result' for e in ok), 2)
+        self.assertFalse(any(e.get('is_error') for e in ok))
 
 
 if __name__ == '__main__':

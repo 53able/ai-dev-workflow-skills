@@ -5,15 +5,20 @@ Standard library only. The parsers accept exactly the formats the eval files use
 EvalError naming the file instead of a guess. This is not a YAML parser.
 """
 from dataclasses import dataclass, field
+import os
 from pathlib import Path
 import re
 import shutil
+import signal
 import subprocess
 from typing import Optional, TypedDict
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 SCHEMA_VERSION = '1.1'
+# Keep the user's git config (commit.gpgsign, core.hooksPath, ...) out of scaffold and grading.
+GIT_ENV = {'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_CONFIG_NOSYSTEM': '1'}
+TIMELINE_CHARS = 400   # per timeline entry; enough to see a test failure, bounded for the grader
 
 
 class EvalError(Exception):
@@ -31,6 +36,9 @@ class Summary(TypedDict):
     cli_version: str
     model: str
     error: Optional[str]
+    # Ordered tool calls and results: {'type': 'tool_use', 'name', 'input'} or
+    # {'type': 'tool_result', 'output', 'is_error'}; text clipped to TIMELINE_CHARS.
+    timeline: list[dict]
 
 
 SUMMARY_KEYS = tuple(Summary.__annotations__)
@@ -38,7 +46,25 @@ SUMMARY_KEYS = tuple(Summary.__annotations__)
 
 def empty_summary() -> Summary:
     return Summary(final_response='', commands=[], edited_files=[], invoked_skills=[],
-                   ignored_options=[], prompt_sent='', cli_version='', model='', error=None)
+                   ignored_options=[], prompt_sent='', cli_version='', model='', error=None,
+                   timeline=[])
+
+
+def clip(text, limit=TIMELINE_CHARS):
+    text = str(text)
+    return text if len(text) <= limit else text[:limit] + '...(truncated)'
+
+
+def git_env():
+    return {**os.environ, **GIT_ENV}
+
+
+def kill_group(proc, sig=signal.SIGKILL):
+    """Kill the process group of proc (started with start_new_session); it may be gone already."""
+    try:
+        os.killpg(proc.pid, sig)
+    except (ProcessLookupError, PermissionError):
+        pass
 
 
 # Value kinds: str (plain or double-quoted), int, num, list (flow list of plain
@@ -116,6 +142,8 @@ def parse_mapping(lines, schema_name, filename, indent=0):
         while i < len(lines) and (not lines[i].strip() or lines[i].startswith(pad + ' ')):
             child.append(lines[i])
             i += 1
+        while child and not child[-1].strip():   # blank lines before the next key
+            child.pop()
         if kind.startswith('map:'):
             if raw is not None or not child:
                 raise EvalError(f'{where}: expected an indented mapping')
@@ -236,7 +264,8 @@ def place_skills(workdir, skill_dir, skills_src=REPO / 'skills'):
         shutil.copytree(src, dest / src.name)
         names.append(src.name)
     exclude = Path(workdir) / '.git' / 'info' / 'exclude'
-    if exclude.parent.is_dir():
+    if exclude.parent.parent.is_dir():
+        exclude.parent.mkdir(exist_ok=True)
         with exclude.open('a') as f:
             f.write(f'/{skill_dir.strip("/")}/\n')
     return names
@@ -247,7 +276,7 @@ def scaffold(case, workdir, skill_dir, skills_src=REPO / 'skills'):
     workdir = Path(workdir)
     workdir.mkdir(parents=True, exist_ok=True)
     script = case.dir / case.scaffold_script
-    r = subprocess.run(['bash', str(script)], cwd=workdir, text=True, capture_output=True)
+    r = subprocess.run(['bash', str(script)], cwd=workdir, text=True, capture_output=True, env=git_env())
     if r.returncode != 0:
         raise EvalError(f'{script}: exit {r.returncode}: {r.stderr.strip()}')
     return place_skills(workdir, skill_dir, skills_src)

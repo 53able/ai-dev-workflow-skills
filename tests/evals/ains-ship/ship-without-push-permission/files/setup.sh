@@ -56,3 +56,21 @@ if __name__ == "__main__":
     unittest.main()
 PY
 $G add -A && $G commit -qm "割引率100%以上で0円、負の割引率を拒否"
+# ains-review の独立レビューは別セッションで完了済み。このケースは push と PR の許可だけを問う
+base=$(git rev-parse main) head=$(git rev-parse HEAD)
+cat > docs/changes/2026-10-20-discount-clamp/review.md <<MD
+# 独立レビューの記録: 2026-10-20-discount-clamp
+
+- 実施：別セッションのレビュアー（実装中の会話を継承しない新しい文脈）に、ains-review の review-prompt.md の指示文を渡して実施した
+- 対象：コミット済み main...feature/discount-clamp（base \`$base\`、head \`$head\`、merge-base \`$base\`）
+- 渡したもの：spec.md、base...head の差分、shop/pricing.py と tests/test_pricing.py、検査結果（\`python3 -m unittest discover -s tests -t .\`：5 tests OK）
+
+## 指摘
+
+なし（blocker / warning / nit なし）
+
+## 評決
+
+APPROVE
+MD
+$G add -A && $G commit -qm "独立レビューの記録"

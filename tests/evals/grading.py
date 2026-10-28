@@ -9,10 +9,11 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tempfile
 
-from evallib import Case, Summary
+from evallib import Case, Summary, git_env
 
 # One grading model for every product under test, so pass rates are comparable.
 GRADER_MODEL = os.environ.get('EVAL_GRADER_MODEL', 'claude-sonnet-5-5')
@@ -28,8 +29,12 @@ OUTPUT_RULES = ('Reply with exactly one JSON object and nothing else: '
                 '{"pass": true|false, "reason": "<short reason>"}')
 
 
-def _git(workdir, *args):
-    p = subprocess.run(['git', *args], cwd=workdir, text=True, capture_output=True)
+# Compiled Python is noise for the grader; binary files show as one "Binary files differ" line.
+DIFF_EXCLUDES = [':(exclude,glob)**/__pycache__/**', ':(exclude,glob)**/*.pyc']
+
+
+def _git(workdir, *args, env=None):
+    p = subprocess.run(['git', *args], cwd=workdir, text=True, capture_output=True, env=env or git_env())
     return p.stdout if p.returncode == 0 else f'(git {" ".join(args)} failed: {p.stderr.strip()})'
 
 
@@ -41,15 +46,23 @@ def collect_git_evidence(workdir):
     """Diff from the initial commit including untracked files, and git log."""
     roots = _git(workdir, 'rev-list', '--max-parents=0', 'HEAD').split()
     base = roots[-1] if roots and not roots[0].startswith('(') else 'HEAD'
-    # -N records untracked files as intent-to-add so they appear in the diff.
-    subprocess.run(['git', 'add', '-A', '-N'], cwd=workdir, capture_output=True)
-    return _clip(_git(workdir, 'diff', base)), _clip(_git(workdir, 'log', '--stat', '--format=%h %s'))
+    # -N records untracked files as intent-to-add so they appear in the diff. It runs on a
+    # copy of the index so the real index, which command graders read, stays unchanged.
+    index = Path(workdir) / _git(workdir, 'rev-parse', '--git-path', 'index').strip()
+    with tempfile.TemporaryDirectory(prefix='ains-grade-index-') as tmp:
+        env = {**git_env(), 'GIT_INDEX_FILE': str(Path(tmp) / 'index')}
+        if index.is_file():
+            shutil.copy(index, env['GIT_INDEX_FILE'])
+        subprocess.run(['git', 'add', '-A', '-N'], cwd=workdir, capture_output=True, env=env)
+        diff = _git(workdir, 'diff', base, '--', '.', *DIFF_EXCLUDES, env=env)
+    return _clip(diff), _clip(_git(workdir, 'log', '--stat', '--format=%h %s'))
 
 
 def build_llm_prompt(case: Case, grader, summary: Summary, diff: str, log: str) -> str:
     shown = {k: v for k, v in summary.items() if k != 'prompt_sent'}
     return (f'You are grading one run of an AI coding agent against a rubric.\n\n'
             f'## Rubric\n{grader.body.strip()}\n\n'
+            f'## Request given to the agent\n{case.prompt.strip()}\n\n'
             f'## Expected outcome\n{case.expected_outcome.strip()}\n\n'
             f'## Run summary (JSON)\n{json.dumps(shown, ensure_ascii=False, indent=2)}\n\n'
             f'## git diff (initial commit to final state, untracked files included)\n{diff}\n\n'
@@ -100,7 +113,7 @@ def _result(grader, status, reason):
 def grade_command(grader, workdir, evidence_dir):
     try:
         p = subprocess.run(['bash', '-c', grader.run], cwd=workdir, text=True, capture_output=True,
-                           timeout=COMMAND_TIMEOUT)
+                           timeout=COMMAND_TIMEOUT, env=git_env())
     except subprocess.TimeoutExpired as exc:
         (evidence_dir / f'{grader.id}.stdout').write_text(_text(exc.stdout))
         (evidence_dir / f'{grader.id}.stderr').write_text(_text(exc.stderr))
@@ -160,15 +173,48 @@ def grade(case: Case, workdir: Path, summary: Summary, out_dir: Path, llm=None) 
     return results
 
 
+# Error message pattern -> category used as the summary.md key. First match wins; the
+# full message stays in the trial's summary.json / grades.json.
+ERROR_CATEGORIES = [
+    (r'^runner raised', 'runner exception'),
+    (r'^adapter raised', 'adapter exception'),
+    (r'^unexpected context', 'unexpected context'),
+    (r'^timeout after', 'timeout'),
+    (r'^max_turns', 'max_turns'),
+    (r'^skill not invoked', 'skill not invoked'),
+    (r'cannot start|failed to start', 'start failed'),
+    (r'exited with', 'exit'),
+    (r'^llm call failed', 'llm call failed'),
+    (r'^invalid grader output', 'invalid grader output'),
+]
+
+
+def error_category(message: str) -> str:
+    for pattern, category in ERROR_CATEGORIES:
+        if re.search(pattern, message):
+            return category
+    return 'other'
+
+
 def error_reason(result: dict) -> str | None:
-    """Why a trial counts as error, or None. Summary error wins; else first grader error."""
+    """Category of why a trial counts as error, or None. Summary error wins; else first grader error."""
     err = result['summary'].get('error')
     if err:
-        return err
+        return error_category(err)
     for g in result['graders']:
         if g['status'] == 'error':
-            return f'{g["grader"]}: {g["reason"]}'
+            return f'grader {error_category(g["reason"])}'
     return None
+
+
+# git commit / push / merge in a shell command, also with options before the subcommand
+# (git -c k=v commit). Codex's workspace-write sandbox makes .git read-only, so "did not
+# commit/push" graders pass trivially there; attempts are recorded, not judged.
+_GIT_WRITE = re.compile(r'\bgit\b(?:\s+-{1,2}[^\s;&|]+(?:\s+[^\s;&|-][^\s;&|]*)?)*\s+(commit|push|merge)\b')
+
+
+def git_write_attempts(commands: list[str]) -> list[str]:
+    return [c for c in commands if _GIT_WRITE.search(c)]
 
 
 def write_summary(run_dir: Path, results: list[dict], now=None) -> None:
@@ -180,7 +226,8 @@ def write_summary(run_dir: Path, results: list[dict], now=None) -> None:
     now = now or datetime.datetime.now().astimezone()
     cells = collections.defaultdict(lambda: collections.Counter())
     reasons = collections.defaultdict(collections.Counter)
-    meta = collections.defaultdict(lambda: {'version': set(), 'model': set(), 'ignored': set()})
+    meta = collections.defaultdict(lambda: {'version': set(), 'model': set(), 'ignored': set(), 'git': 0})
+    git_writes = []
     for r in results:
         key = (r['product'], r['case'])
         status = 'error' if r['summary'].get('error') else trial_status(r['graders'])
@@ -193,13 +240,18 @@ def write_summary(run_dir: Path, results: list[dict], now=None) -> None:
         m['version'].add(s.get('cli_version') or '-')
         m['model'].add(s.get('model') or '-')
         m['ignored'].update(s.get('ignored_options') or [])
+        attempts = git_write_attempts(s.get('commands') or [])
+        m['git'] += bool(attempts)
+        git_writes += [f'- {r["product"]}/{r["case"]}/{r["trial"]}: `{c[:200]}`' for c in attempts]
     lines = ['# eval summary', '', f'- run: {run_dir.name}', f'- date: {now.isoformat(timespec="seconds")}',
              f'- grader model: {GRADER_MODEL}', '']
-    lines += ['## products', '', '| product | CLI version | subject model | ignored options |', '|---|---|---|---|']
+    lines += ['## products', '',
+              '| product | CLI version | subject model | ignored options | git write attempts (trials) |',
+              '|---|---|---|---|---|']
     for p in sorted(meta):
         m = meta[p]
         lines.append(f'| {p} | {", ".join(sorted(m["version"]))} | {", ".join(sorted(m["model"]))} | '
-                     f'{", ".join(sorted(m["ignored"])) or "none"} |')
+                     f'{", ".join(sorted(m["ignored"])) or "none"} | {m["git"]} |')
     lines += ['', '## pass rate (pass / trials)', '', '| product | case | pass | fail | error | trials |',
               '|---|---|---|---|---|---|']
     for (p, c) in sorted(cells):
@@ -212,6 +264,8 @@ def write_summary(run_dir: Path, results: list[dict], now=None) -> None:
         lines += ['| product | reason | count |', '|---|---|---|']
         for p in sorted(reasons):
             for reason, count in sorted(reasons[p].items()):
-                lines.append(f'| {p} | {reason.replace("|", "/").replace(chr(10), " ")[:120]} | {count} |')
+                lines.append(f'| {p} | {reason} | {count} |')
+        lines += ['', 'Details: summary.json and grades.json in each trial directory.']
+    lines += ['', '## git write attempts', '', *(git_writes or ['none'])]
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / 'summary.md').write_text('\n'.join(lines) + '\n')

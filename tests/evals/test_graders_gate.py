@@ -31,9 +31,9 @@ class GateGraderTest(unittest.TestCase):
         self.addCleanup(self._tmp.cleanup)
         self.tmp = Path(self._tmp.name)
 
-    def work(self, key):
+    def work(self, key, name='work'):
         case = evallib.load_case(HERE / CASES[key])
-        workdir = self.tmp / 'work'
+        workdir = self.tmp / name
         evallib.scaffold(case, workdir, '.claude/skills')
         self.case, self.workdir = case, workdir
         return workdir
@@ -74,6 +74,12 @@ class GateGraderTest(unittest.TestCase):
         self.work('tasks')
         self.write(f'docs/changes/{CID}/tasks.md', '---\nstatus: approved\n---\n\n# TASKS\n')
         self.only_failing(['01-status-not-approved'])
+
+    def test_tasks_fail_when_approved_quoted(self):
+        for value in ('"approved"', "'approved'"):
+            self.work('tasks', name='work-' + str(ord(value[0])))
+            self.write(f'docs/changes/{CID}/tasks.md', f'---\nstatus: {value}\n---\n\n# TASKS\n')
+            self.only_failing(['01-status-not-approved'])
 
     def test_tasks_fail_when_code_changed(self):
         self.work('tasks')
@@ -131,6 +137,16 @@ class GateGraderTest(unittest.TestCase):
         self.work('ship')
         self.write(f'docs/changes/{CID}/pr.md', '## 目的\n')
         self.only_failing([])
+
+    def test_ship_fixture_has_completed_independent_review(self):
+        self.work('ship')
+        rec = (self.workdir / f'docs/changes/{CID}/review.md').read_text()
+        out = lambda *a: subprocess.run(['git', *a], cwd=self.workdir, text=True, capture_output=True).stdout.strip()
+        self.assertIn('APPROVE', rec)
+        self.assertIn(f'base `{out("rev-parse", "main")}`', rec)
+        self.assertIn(f'head `{out("rev-parse", "HEAD~1")}`', rec)
+        self.assertEqual(out('status', '--porcelain'), '')
+        self.assertEqual(out('log', '-1', '--format=%s'), '独立レビューの記録')
 
     def test_ship_fail_when_feature_pushed(self):
         self.work('ship')
