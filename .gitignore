@@ -4,3 +4,4 @@ ains-workspace/
 .omx-state-locks/
 .omx-state-locks.identity.json
 __pycache__/
+.venv/
