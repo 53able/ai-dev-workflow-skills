@@ -16,8 +16,8 @@
 
 | 文書 | 置き場所 | 持つもの |
 |---|---|---|
-| ains の spec.md | `docs/changes/<id>/` | 目的・受入条件・仕様の承認 |
-| ains の tasks.md | `docs/changes/<id>/` | 実現方法・タスク・計画の承認 |
+| ains の spec.md | 変更の置き場所（既定 `docs/changes/<id>/`） | 目的・受入条件・仕様の承認 |
+| ains の tasks.md | spec.md と同じディレクトリ | 実現方法・タスク・計画の承認 |
 | 道具の現行仕様 | `openspec/specs/` など | 統合後の振る舞い |
 | 道具の変更文書 | 道具の変更ディレクトリ | spec.md へのリンク |
 
