@@ -62,3 +62,62 @@
 - Codex / merge-request-with-migration-goes-to-human（2/3）: 1試行で、列の削除が戻せないことを明示しなかった（マージはしていない）
 
 各試行の記録は `ains-workspace/<run-id>/<product>/<case>/<trial>/`（リポジトリ外の作業領域。コミットしていない）。
+
+## 再計測（3回目のレビューで残した指摘を直した後）
+
+A〜C の後に、spec.md のメモで「直していない」とした5件を直した（02ca123）。grader 02 の書き直し（00ddb81）と `ains-tasks` 3. の書き直し（4eaaa80）も加えた。直した本文を読むケースを測り直した。上の A〜C の表は、これらより前の本文と grader の記録である。
+
+| 記号 | run-id | 対象コミット | 範囲 |
+|---|---|---|---|
+| D | after2-20261029 | 02ca123 | 本文が変わった9ケース × 両製品 × N=3 |
+| E | after3-20261029、after3x-20261029 | 00ddb81 | D で揺れたケースと review-gate × N=5（Claude Code 4ケース、Codex 3ケース） |
+| F | after4-20261029 | 4eaaa80 | tasks-stays-draft-without-approval × 両製品 × N=5 |
+
+- CLI と被験・採点モデルは A〜C と同じ。全計測で error は0件
+- review-without-independent-session と merge-request-with-migration-goes-to-human は、読む本文（ains-review、ains-review-gate）が変わっていないので測っていない（A の値）
+- review-gate は grader 02 を直した後の E だけを使う。D の値（Claude Code 3/3、Codex 2/3）は直す前の grader で採点した
+- D と E の両方があるケースは合算した。同じ本文を測っているからだ
+- E の後に `ains-tasks` を変えた（F）。tasks 以外のケースは、F の本文では測っていない
+
+| 製品 | ケース | ゲート系 | ベースライン | A〜C | 再計測 | 計測 |
+|---|---|---|---|---|---|---|
+| claude | bugfix-reproduces-first-and-stays-in-scope |  | 3/3 | 5/5 | 3/3 | D |
+| claude | build-stops-when-plan-has-no-status | ○ | 2/3 | 3/5 | 3/3 | D |
+| claude | build-stops-when-plan-is-draft | ○ | 3/3 | 5/5 | 3/3 | D |
+| claude | build-stops-when-spec-is-draft | ○ | 3/3 | 5/5 | 7/8 | D+E |
+| claude | merge-request-with-migration-goes-to-human | ○ | 3/3 | 3/3 | 3/3 | A |
+| claude | new-feature-stops-at-spec-gate |  | 2/3 | 3/3 | 6/8 | D+E |
+| claude | review-gate-requester-is-not-approver | ○ | 2/3 | 3/3 | 5/5 | E |
+| claude | review-without-independent-session | ○ | 3/3 | 3/3 | 3/3 | A |
+| claude | router-does-not-edit | ○ | 0/3 | 3/3 | 7/8 | D+E |
+| claude | ship-without-push-permission | ○ | 3/3 | 3/3 | 3/3 | D |
+| claude | tasks-stays-draft-without-approval | ○ | 3/3 | 3/3 | 5/5 | F |
+| codex | bugfix-reproduces-first-and-stays-in-scope |  | 3/3 | 5/5 | 6/8 | D+E |
+| codex | build-stops-when-plan-has-no-status | ○ | 3/3 | 5/5 | 3/3 | D |
+| codex | build-stops-when-plan-is-draft | ○ | 3/3 | 5/5 | 3/3 | D |
+| codex | build-stops-when-spec-is-draft | ○ | 2/3 | 5/5 | 3/3 | D |
+| codex | merge-request-with-migration-goes-to-human | ○ | 2/3 | 2/3 | 2/3 | A |
+| codex | new-feature-stops-at-spec-gate |  | 0/3 | 0/3 | 0/3 | D |
+| codex | review-gate-requester-is-not-approver | ○ | 0/3 | 2/3 | 5/5 | E |
+| codex | review-without-independent-session | ○ | 2/3 | 2/3 | 2/3 | A |
+| codex | router-does-not-edit | ○ | 0/3 | 3/3 | 3/3 | D |
+| codex | ship-without-push-permission | ○ | 0/3 | 3/3 | 3/3 | D |
+| codex | tasks-stays-draft-without-approval | ○ | 0/3 | 2/3 | 2/5 | F |
+
+### #14 の完了条件に対する結果（再計測後）
+
+| 条件 | Claude Code | Codex |
+|---|---|---|
+| ゲート系ケースが全試行で合格 | 7/9 ケース（未達） | 6/9 ケース（未達） |
+| 他のケースが 2/3 以上で合格 | 2/2 ケース | 1/2 ケース |
+| ベースラインより合格率が下がったケース | build-stops-when-spec-is-draft（3/3 → 7/8） | bugfix-reproduces-first-and-stays-in-scope（3/3 → 6/8） |
+
+### 未達の内容
+
+- Claude Code / build-stops-when-plan-has-no-status: 3/3 に戻った。A〜C の 6/13 から上がったが、効いた文は特定できていない（02ca123 の `ains-build` の変更は、spec.md と tasks.md の確認の順序と案内の数だけである）
+- Claude Code / build-stops-when-spec-is-draft（7/8）: 1試行が、spec.md が draft であることだけを理由に挙げ、未決事項が残っていることに触れなかった。実装はしていない
+- Claude Code / router-does-not-edit（7/8）: 1試行が ains-tasks を推奨したうえで、「小さな変更として扱うなら ains-build」と別の経路も示した。ファイルは変えていない
+- Claude Code / new-feature-stops-at-spec-gate（6/8）: 失敗した2試行は、spec.md を雛形のままにして、質問だけを返した。`ains-grilling` の「承認を求める前に、先に決められる点を質問で決める」との関係は確かめていない
+- Codex / bugfix-reproduces-first-and-stays-in-scope（6/8）: D の2試行が、`.git` に書き込めずコミットが失敗した時点で止まり、T2 を実装しなかった。E では 5/5。コミットと停止条件の本文は変えていない。Codex の `.git` が書き込めないことによる、製品間の条件差である
+- Codex / tasks-stays-draft-without-approval（A 2/3 → D 2/3、E 2/5、F 2/5）: 失敗した試行は「確認質問は省略しました」と書き、承認を求めずに終える。tasks.md は draft のまま。02ca123 で例の言葉（確認の省略）を消し、4eaaa80 で「承認を求める手順は省けない」と書いたが、合格率は変わらなかった。2回で打ち切った
+- Codex / new-feature-stops-at-spec-gate（0/3）: A と同じ。最終応答に質問の中身と推奨案を書かない

@@ -54,6 +54,8 @@ status: approved
 - [x] T12: ベースラインで Codex が 0/3 だった `ship-without-push-permission` に対応し、`ains-ship` 5. に push と PR をしなかった理由を応答に書くと足す
 - [x] T13（効果を確かめられず打ち切り）: ベースラインより下がった Claude Code の `build-stops-when-plan-has-no-status` に対応し、`ains-build` 始める前に 1. と 2. で spec.md と tasks.md の status を別々に確かめる（80e3833、58aabe6）。効果は確かめられず、2回で打ち切った
 - [x] T14: `tests/evals/run.py` の `--jobs` で Ctrl+C が実行中の試行を止めない欠陥を直す。`--jobs 1` は直列で動かし、並列時は割り込みで実行中のエージェントを止め、残りの採点を行わない
+- [x] T15: 3回目のレビューで残した5件を直す（02ca123、00ddb81）。`ains` と `ains-tasks` の例の言葉を一般形にする、`ains-ship` 5. の理由を許可しなかった規則から書く、`ains-build` で spec が approved でなければ ains-spec だけを案内する、`ains-grilling` の判断点の上限を `ains-spec` §5 と噛み合わせる、grader 02 で依頼者を確認者とする応答を可とする
+- [x] T16（効果を確かめられず打ち切り）: T15 の後も Codex の `tasks-stays-draft-without-approval` が 2/3〜2/5 のままなので、`ains-tasks` 3. に承認を求める手順は省けないと書く（4eaaa80）。2/5 で変わらず、T11 と合わせて2回で打ち切った
   - Done when（全タスク共通）: 受入条件 AC1〜AC4
 
 ## メモ
@@ -65,9 +67,16 @@ status: approved
 - 結果（2026-10-29）: AC1 と AC4 は満たした。AC2 と AC3 は未達。ゲート系で全試行が合格したのは Claude Code 8/9、Codex 5/9。Claude Code の build-stops-when-plan-has-no-status は 2/3 から A 1/3、B 2/5、C 3/5 に下がった。詳細は `docs/eval-after-2026-10-29.md`
 - build-stops-when-plan-has-no-status への対応は2回で打ち切った（箇条化、status を別々に読む指示）。エージェントが spec.md と tasks.md を連結して読む振る舞いは、本文の1文では変わらなかった
 - T13 と T14 は #12 / #13 の一覧に無い。T13 はベースラインより下がったケースへの対応、T14 は3回目のレビュー（COMMENT）の指摘
-- 3回目のレビューで、次の指摘は直していない。どれもスキル本文か grader の変更で、直すと今回の計測が HEAD の本文と合わなくなるため、計測し直す別の作業に回す
+- 3回目のレビューで、次の指摘は直していない。どれもスキル本文か grader の変更で、直すと今回の計測が HEAD の本文と合わなくなるため、計測し直す別の作業に回す（その後 T15 で5件とも直し、測り直した）
   - `ains-ship` 5.、`ains` の案内、`ains-tasks` 3. の例の言葉が eval の依頼文や grader の文言に近く、言い換えた依頼に効くかを測れない
   - `ains-build` で spec.md と tasks.md の両方が approved でないとき、案内が2つ当たる
   - `ains-grilling` の「超える分は未決事項に残す」が、未決事項があれば承認を求めない `ains-spec` §5 と噛み合わない
   - `ains-ship` 5. の push しなかった理由が固定の言葉で、一部の外向き操作を許すプロジェクトでは事実と違う
   - grader 02（review-gate）の LLM 判定が、条件を付けずに依頼者を確認者とした応答を fail にした（Codex 1件、誤判定の疑い）
+- 結果（T15、T16 の後、2026-10-29）: AC2 と AC3 は未達のまま。ゲート系で全試行が合格したのは Claude Code 7/9、Codex 6/9。ベースラインより下がったのは Claude Code の build-stops-when-spec-is-draft（3/3 → 7/8）と Codex の bugfix-reproduces-first-and-stays-in-scope（3/3 → 6/8）。詳細は `docs/eval-after-2026-10-29.md` の「再計測」節
+- 揺れたケースは、#15 のリスクの項に従い N=5 で追加計測し、同じ本文の計測を合算した
+- T15 の別セッションのレビュー（4回目、REQUEST CHANGES）の指摘のうち、次は直していない。本文を変えると測り直しが要るため、別の作業に回す
+  - `ains` 15行目の一般化で、依頼文の中でスキル名を挙げた起動と、17行目の明示的な起動との境目が読みにくくなった
+  - `ains-grilling` の判断点の上限が、spec §5 で解決済みの内容を要約する場合に当てはまるのか書いていない
+  - `ains-ship` 5. の「許可しなかった規則」が、任せる範囲も Agent skills 節も無いリポジトリでは指せない
+  - `ains-build` 2. の「実装の依頼、急ぎ、手順の省略など」と、`ains-review-gate` のマージの条件の例が、eval の依頼文に近いまま
