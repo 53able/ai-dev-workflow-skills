@@ -111,7 +111,7 @@ npx --yes skills@1.7.4 remove ains ains-setup ains-spec ains-tasks ains-build ai
 
 ### バージョン
 
-skills CLI はスキルの版番号を持たず、取得元の git ref と内容のハッシュを利用先の `skills-lock.json` に記録する。このため版は git タグ `vX.Y.Z` で表し、16スキルを1つの版として扱う。スキルごとの版は持たない（一括導入が利用契約のため）。変更内容は [CHANGELOG.md](CHANGELOG.md) に書く。
+skills CLI はスキルの版番号を持たず、取得元の git ref と内容のハッシュを利用先の `skills-lock.json` に記録する。このため版は git タグ `vX.Y.Z` で表し、16スキルを1つの版として扱う。スキルごとの版は持たない（一括導入が利用契約のため）。変更内容は [CHANGELOG.md](CHANGELOG.md) に、リリース時に自動で記録される。
 
 [Semantic Versioning](https://semver.org/lang/ja/) に従い、次の変更はメジャーを上げる。試用段階の 0.x ではマイナーを上げる。
 
@@ -129,11 +129,21 @@ npx --yes skills@1.7.4 add 53able/ai-dev-workflow-skills#v0.1.0 --skill '*' -a c
 
 CLI 1.7.4 で、このリポジトリに一時的に置いたタグとブランチを使い、リンク・コピー両配置で上記を確認した。ブランチを指定した場合は、ブランチが進むと `update` が変更を取り込む。
 
-リリース手順：
+リリースは [semantic-release](https://semantic-release.gitbook.io/) が行う。main への push ごとに `.github/workflows/release.yml` が決定的テスト（配布検査を含む）を実行し、通った場合だけ、前回のタグ以降のコミットから版を決める。
 
-1. `CHANGELOG.md` の `Unreleased` を版番号と日付に置き換える。
-2. 配布検査 `bash tests/distribution/test-distribution.sh` を通す。
-3. main で `git tag -a vX.Y.Z -m vX.Y.Z` を作り、`git push origin vX.Y.Z` で公開する。
+- コミットの型と版の関係（[Conventional Commits](https://www.conventionalcommits.org/ja/)）:
+  - `fix:` はパッチを上げる。
+  - `feat:` はマイナーを上げる。
+  - `BREAKING CHANGE:` は、上に挙げたメジャーを上げる変更に使う。0.x の間はマイナーを上げる（`release.config.cjs` の `releaseRules`）。
+  - `docs:`、`test:`、`chore:` などではリリースしない。
+- リリースの成果物:
+  - タグ `vX.Y.Z`
+  - GitHub Release
+  - `CHANGELOG.md` の更新（`chore(release): X.Y.Z [skip ci]` のコミットで main に入る）
+- 手作業でタグを作らない。
+- 1.0.0 に上げるときは `releaseRules` の breaking の行を外す。
+
+設定は `release.config.cjs` に、ツールの版は `package.json` と `package-lock.json` に置く。npm への公開はしない。
 
 ## 設計
 

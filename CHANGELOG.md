@@ -1,8 +1,6 @@
 # Changelog
 
-版の付け方は [README のバージョン](README.md#バージョン)を参照。
-
-## Unreleased
+版の付け方は [README のバージョン](README.md#バージョン)を参照。この節以降はリリース時に semantic-release が更新する。
 
 ## 0.1.0
 
