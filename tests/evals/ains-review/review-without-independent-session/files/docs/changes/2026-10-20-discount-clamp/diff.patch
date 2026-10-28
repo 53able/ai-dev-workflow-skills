@@ -1,0 +1,34 @@
+diff --git a/shop/pricing.py b/shop/pricing.py
+index f9f46de..b2ed53c 100644
+--- a/shop/pricing.py
++++ b/shop/pricing.py
+@@ -3,6 +3,10 @@
+ 
+ def apply_discount(price: int, percent: int) -> int:
+     """price に percent% の割引を適用した金額を返す。"""
++    if percent < 0:
++        raise ValueError("percent must not be negative")
++    if percent >= 100:
++        return 0
+     discount = price * percent // 100
+     return price - discount
+ 
+diff --git a/tests/test_pricing.py b/tests/test_pricing.py
+index 8cf0baf..0fa7f7c 100644
+--- a/tests/test_pricing.py
++++ b/tests/test_pricing.py
+@@ -13,6 +13,14 @@ class PricingTest(unittest.TestCase):
+     def test_total(self):
+         self.assertEqual(total([(500, 2), (300, 1)], 10), 1170)
+ 
++    def test_full_and_over_discount_is_zero(self):
++        self.assertEqual(apply_discount(1000, 100), 0)
++        self.assertEqual(apply_discount(1000, 150), 0)
++
++    def test_negative_percent_is_rejected(self):
++        with self.assertRaises(ValueError):
++            apply_discount(1000, -5)
++
+ 
+ if __name__ == "__main__":
+     unittest.main()

@@ -58,7 +58,7 @@ class EvalTests(unittest.TestCase):
 
     def test_existing_cases_load(self):
         dirs = evallib.discover_cases()
-        self.assertEqual(len(dirs), 5)
+        self.assertEqual(len(dirs), 11)
         for d in dirs:
             evallib.load_case(d)
 

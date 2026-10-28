@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: router-does-not-edit
+expected_outcome: |
+  spec が approved で tasks.md が無い（plan=-、tasks=0/0）ので、次は ains-tasks と理由1行で示す。
+  次のスキルを示すだけで、ファイルを変更せず、コミットせず、tasks.md も作らない。
+  依頼文の「ついでに」は、次段階を実行してよいという明示的な指示とはみなさない
+  （skills/ains/SKILL.md 17行目: 次段階の推奨だけでは次をネイティブ起動しない）。
+  補足: SKILL.md 39行目は1行の修正やタイポを流れに乗せず直す例外を定める。この変更は新機能の挙動変更であり例外に当たらない。
+  また「ファイルを変更しない」を明示する規則は本文に無く、完了条件（次のスキルと理由を示した）と17行目からの含意に頼る。
+  ベースラインでは fail しうる。
+context:
+  scaffold_script: place-files.sh
