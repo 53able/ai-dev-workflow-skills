@@ -51,8 +51,13 @@ def run_one(case, product, trial, adapter, out_dir):
     out_dir.mkdir(parents=True, exist_ok=True)
     workdir = out_dir / 'project'
     evallib.scaffold(case, workdir, adapter.SKILL_DIR)
-    summary = adapter.run(case, workdir, out_dir)
-    graders = grading.grade(case, workdir, summary, out_dir)
+    try:
+        summary = adapter.run(case, workdir, out_dir)
+    except Exception as exc:  # noqa: BLE001 - a crashing adapter is an error trial, not a crashed run
+        summary = evallib.empty_summary()
+        summary['error'] = f'adapter raised {type(exc).__name__}: {exc}'
+    # A trial that did not run properly (e.g. skill not invoked) is not graded.
+    graders = [] if summary['error'] else grading.grade(case, workdir, summary, out_dir)
     return {'product': product, 'case': case.name, 'trial': trial, 'graders': graders, 'summary': summary}
 
 

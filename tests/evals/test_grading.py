@@ -1,0 +1,125 @@
+"""Grading tests; the LLM is always a stub, no model is called."""
+import datetime
+import json
+from pathlib import Path
+import subprocess
+import tempfile
+import unittest
+
+import evallib
+import grading
+from evallib import Grader
+
+
+def make_grader(id, type, run=None, body='rubric'):
+    return Grader(id=id, path=Path(id), type=type, focus='trace', weight=1.0, run=run, body=body)
+
+
+class GradingTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix='ains-gradetest-')
+        self.addCleanup(self.tmp.cleanup)
+        root = Path(self.tmp.name)
+        self.work = root / 'project'
+        self.work.mkdir()
+        git = ['git', '-c', 'user.name=e', '-c', 'user.email=e@x']
+        subprocess.run(['git', 'init', '-q', '-b', 'main'], cwd=self.work, check=True)
+        (self.work / 'a.txt').write_text('hi\n')
+        subprocess.run(['git', 'add', '-A'], cwd=self.work, check=True)
+        subprocess.run([*git, 'commit', '-qm', 'init'], cwd=self.work, check=True)
+        (self.work / 'new.txt').write_text('untracked-marker\n')
+        self.out = root / 'out'
+
+    def case(self, graders):
+        c = object.__new__(evallib.Case)
+        c.__dict__.update(name='c', expected_outcome='stops', graders=graders)
+        return c
+
+    def grade(self, graders, llm, summary=None):
+        return grading.grade(self.case(graders), self.work, summary or evallib.empty_summary(), self.out, llm=llm)
+
+    def test_dispatch_order_and_command(self):
+        calls = []
+        graders = [make_grader('03-llm', 'llm'), make_grader('02-fail', 'command', run='exit 3'),
+                   make_grader('01-ok', 'command', run='test -f new.txt && echo out && echo err >&2')]
+
+        def llm(prompt):
+            calls.append(prompt)
+            return '{"pass": true, "reason": "fine"}'
+        res = self.grade(graders, llm)
+        self.assertEqual([r['grader'] for r in res], ['01-ok', '02-fail', '03-llm'])
+        self.assertEqual([r['status'] for r in res], ['pass', 'fail', 'pass'])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual((self.out / 'graders' / '01-ok.stdout').read_text(), 'out\n')
+        self.assertEqual((self.out / 'graders' / '01-ok.stderr').read_text(), 'err\n')
+        self.assertEqual(json.loads((self.out / 'grades.json').read_text())['status'], 'fail')
+
+    def test_llm_prompt_contents_and_saved(self):
+        s = evallib.empty_summary()
+        s['final_response'] = 'FINAL-MARK'
+        s['prompt_sent'] = 'SECRET-PROMPT'
+        seen = []
+        self.grade([make_grader('01', 'llm', body='RUBRIC-MARK')], lambda p: seen.append(p) or '{"pass":false,"reason":"r"}', s)
+        p = seen[0]
+        for needle in ('RUBRIC-MARK', 'stops', 'FINAL-MARK', 'untracked-marker', 'init'):
+            self.assertIn(needle, p)
+        self.assertNotIn('SECRET-PROMPT', p)
+        self.assertEqual((self.out / 'graders' / '01.prompt.md').read_text(), p)
+        self.assertIn('"pass":false', (self.out / 'graders' / '01.raw.txt').read_text())
+
+    def test_command_timeout_is_error(self):
+        old = grading.COMMAND_TIMEOUT
+        grading.COMMAND_TIMEOUT = 1
+        self.addCleanup(setattr, grading, 'COMMAND_TIMEOUT', old)
+        res = self.grade([make_grader('01', 'command', run='sleep 5')], None)
+        self.assertEqual(res[0]['status'], 'error')
+
+    def test_llm_accept_and_reject(self):
+        ok = ['{"pass": true, "reason": "r"}', '  {"pass": false, "reason": ""}\n',
+              '```json\n{"pass": true, "reason": "r"}\n```']
+        for raw in ok:
+            self.assertIsInstance(grading.parse_verdict(raw)[0], bool, raw)
+        bad = ['', 'pass', 'Sure! {"pass": true, "reason": "r"}', '{"pass": true}',
+               '{"pass": true, "reason": "r", "extra": 1}', '{"pass": "true", "reason": "r"}',
+               '{"pass": 1, "reason": "r"}', '{"pass": true, "reason": 5}', '[true]', 'null']
+        for raw in bad:
+            res = self.grade([make_grader('01', 'llm')], lambda p, raw=raw: raw)
+            self.assertEqual(res[0]['status'], 'error', raw)
+            self.assertIn('invalid grader output', res[0]['reason'])
+
+    def test_llm_exception_is_error(self):
+        def boom(prompt):
+            raise RuntimeError('down')
+        res = self.grade([make_grader('01', 'llm')], boom)
+        self.assertEqual(res[0]['status'], 'error')
+
+    def test_trial_status(self):
+        st = lambda *s: grading.trial_status([{'status': x} for x in s])
+        self.assertEqual(st('pass', 'pass'), 'pass')
+        self.assertEqual(st('pass', 'fail'), 'fail')
+        self.assertEqual(st('fail', 'error'), 'error')
+
+    def test_write_summary(self):
+        def summ(error=None, ignored=()):
+            s = evallib.empty_summary()
+            s.update(cli_version='1.2.3', model='m-x', error=error, ignored_options=list(ignored))
+            return s
+        g = lambda *st: [{'grader': f'g{i}', 'type': 'command', 'status': x, 'reason': 'r'} for i, x in enumerate(st)]
+        results = [
+            {'product': 'claude', 'case': 'c1', 'trial': 1, 'graders': g('pass', 'pass'), 'summary': summ()},
+            {'product': 'claude', 'case': 'c1', 'trial': 2, 'graders': g('pass', 'fail'), 'summary': summ()},
+            {'product': 'claude', 'case': 'c1', 'trial': 3, 'graders': g('pass', 'error'), 'summary': summ()},
+            {'product': 'codex', 'case': 'c1', 'trial': 1, 'graders': [], 'summary': summ('skill not invoked', ['--max-turns'])},
+            {'product': 'codex', 'case': 'c1', 'trial': 2, 'graders': [], 'summary': summ('skill not invoked', ['--max-turns'])},
+        ]
+        run_dir = Path(self.tmp.name) / 'run-1'
+        grading.write_summary(run_dir, results, now=datetime.datetime(2026, 1, 2, 3, 4, 5, tzinfo=datetime.timezone.utc))
+        text = (run_dir / 'summary.md').read_text()
+        for needle in ('| claude | c1 | 1/3 | 1 | 1 | 3 |', '| codex | c1 | 0/2 | 0 | 2 | 2 |',
+                       '| codex | skill not invoked | 2 |', '| claude | g1: r | 1 |', '1.2.3', 'm-x',
+                       '--max-turns', '2026-01-02T03:04:05+00:00', grading.GRADER_MODEL, 'run-1'):
+            self.assertIn(needle, text)
+
+
+if __name__ == '__main__':
+    unittest.main()

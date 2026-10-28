@@ -125,9 +125,27 @@ class EvalTests(unittest.TestCase):
         for product in run.PRODUCTS:
             a = run.load_adapter(product)
             self.assertTrue(a.SKILL_DIR.endswith('/'))
-            with self.assertRaises(NotImplementedError):
-                a.run(None, Path('.'), Path('.'))
+            self.assertTrue(callable(a.run))
         self.assertEqual(set(evallib.empty_summary()), set(evallib.SUMMARY_KEYS))
+
+    def test_run_one_error_trial_is_not_graded(self):
+        case = evallib.load_case(self.make_case())
+
+        class Boom:
+            SKILL_DIR = '.claude/skills/'
+
+            def run(self, case, workdir, out_dir):
+                raise RuntimeError('cli missing')
+
+        class NotInvoked(Boom):
+            def run(self, case, workdir, out_dir):
+                s = evallib.empty_summary()
+                s['error'] = 'skill not invoked'
+                return s
+        for adapter, msg in ((Boom(), 'adapter raised RuntimeError'), (NotInvoked(), 'skill not invoked')):
+            r = run.run_one(case, 'claude', 1, adapter, self.root / 'o' / msg[:5])
+            self.assertEqual(r['graders'], [])
+            self.assertIn(msg, r['summary']['error'])
 
 
 if __name__ == '__main__':
