@@ -98,8 +98,81 @@ class IsolatedEnvTests(unittest.TestCase):
                 env = codex.isolated_env(Path(tmp))
             self.assertEqual(env['HOME'], tmp)
             self.assertEqual(env['CODEX_HOME'], str(Path(tmp, '.codex')))
+            self.assertEqual(env['GIT_CONFIG_GLOBAL'], os.devnull)
+            self.assertEqual(env['GIT_CONFIG_NOSYSTEM'], '1')
             self.assertEqual(sorted(p.name for p in Path(tmp, '.codex').iterdir()), ['auth.json'])
             self.assertEqual(Path(tmp, '.codex', 'auth.json').resolve(), Path(real, 'auth.json').resolve())
+
+
+FAKE = """#!/bin/sh
+[ "$1" = --version ] && { echo 9.9.9; exit 0; }
+printf '%s\\n%s\\n' "$HOME" "$CODEX_HOME" > "$FAKE_DIR/env"
+[ -e "$CODEX_HOME/auth.json" ] && echo linked > "$FAKE_DIR/auth_seen"
+[ -n "$FAKE_SLEEP" ] && sleep "$FAKE_SLEEP"
+cat "$FAKE_DIR/stream"
+echo boom >&2
+exit "${FAKE_EXIT:-0}"
+"""
+READ_SKILL = {'type': 'item.completed', 'item': {'type': 'command_execution', 'exit_code': 0,
+                                                 'command': "/bin/zsh -lc 'cat .agents/skills/ains-build/SKILL.md'"}}
+OTHER = {'type': 'item.completed', 'item': {'type': 'agent_message', 'text': 'no skill read'}}
+
+
+class RunWithFakeCliTests(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory(prefix='ains-fakecodex-')
+        self.addCleanup(tmp.cleanup)
+        self.dir = Path(tmp.name).resolve()
+        (self.dir / 'bin').mkdir()
+        (self.dir / 'bin' / 'codex').write_text(FAKE)
+        (self.dir / 'bin' / 'codex').chmod(0o755)
+        self.work = self.dir / 'work'
+        self.work.mkdir()
+        self.real_home = self.dir / 'real-codex'
+        self.real_home.mkdir()
+        (self.real_home / 'auth.json').write_text('{"token": "x"}')
+        self.case = object.__new__(evallib.Case)
+        self.case.__dict__.update(prompt='/ains-build x\n', max_turns=3, timeout_seconds=30, allowed_tools=None)
+
+    def run_fake(self, events, **env):
+        (self.dir / 'stream').write_text(''.join(json.dumps(e) + '\n' for e in events))
+        path = f'{self.dir / "bin"}{os.pathsep}{os.environ["PATH"]}'
+        with mock.patch.dict(os.environ, {'PATH': path, 'FAKE_DIR': str(self.dir),
+                                          'CODEX_HOME': str(self.real_home), **env}):
+            return codex.run(self.case, self.work, self.dir / 'out')
+
+    def test_skill_read_is_ok(self):
+        s = self.run_fake([READ_SKILL, OTHER])
+        self.assertIsNone(s['error'])
+        self.assertEqual(s['invoked_skills'], ['ains-build'])
+        self.assertEqual(s['cli_version'], '9.9.9')
+        self.assertTrue((self.dir / 'out' / 'codex.jsonl').is_file())
+
+    def test_skill_not_read_is_error(self):
+        s = self.run_fake([OTHER])
+        self.assertEqual(s['error'], 'skill not invoked: ains-build')
+
+    def test_timeout_saves_transcript(self):
+        self.case.timeout_seconds = 1
+        s = self.run_fake([READ_SKILL], FAKE_SLEEP='20')
+        self.assertEqual(s['error'], 'timeout after 1s')
+        self.assertTrue((self.dir / 'out' / 'codex.jsonl').is_file())
+        self.assertTrue((self.dir / 'out' / 'codex.stderr').is_file())
+
+    def test_nonzero_exit_is_error(self):
+        s = self.run_fake([READ_SKILL], FAKE_EXIT='3')
+        self.assertTrue(s['error'].startswith('codex exited with 3'), s['error'])
+        self.assertIn('boom', s['error'])
+
+    def test_temp_home_removed_and_real_login_kept(self):
+        self.run_fake([READ_SKILL])
+        home, codex_home = (self.dir / 'env').read_text().splitlines()
+        self.assertNotEqual(home, str(Path.home()))
+        self.assertNotEqual(codex_home, str(self.real_home))
+        self.assertEqual(codex_home, str(Path(home, '.codex')))
+        self.assertTrue((self.dir / 'auth_seen').exists())   # login was reachable in the child
+        self.assertFalse(Path(home).exists())
+        self.assertEqual((self.real_home / 'auth.json').read_text(), '{"token": "x"}')
 
 
 if __name__ == '__main__':

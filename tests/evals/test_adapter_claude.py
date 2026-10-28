@@ -119,6 +119,12 @@ class RunWithFakeCliTests(unittest.TestCase):
         self.assertEqual(json.loads((self.dir / 'out' / 'init.json').read_text())['cwd'], str(self.work))
         self.assertEqual(s['cli_version'], '9.9.9')
 
+    def test_git_config_isolated_in_env(self):
+        (self.dir / 'bin' / 'claude').write_text(FAKE.replace('cat > /dev/null', 'cat > /dev/null\n'
+            'echo "$GIT_CONFIG_GLOBAL $GIT_CONFIG_NOSYSTEM" > "$FAKE_DIR/gitenv"'))
+        self.run_fake([self.init(), {'type': 'result', 'subtype': 'success', 'result': 'done'}])
+        self.assertEqual((self.dir / 'gitenv').read_text().split(), [os.devnull, '1'])
+
     def test_agent_tool_provided_is_error(self):
         s = self.run_fake([self.init(tools=['Read', 'Skill', 'Bash', 'Agent']),
                            {'type': 'result', 'subtype': 'success', 'result': 'done'}])

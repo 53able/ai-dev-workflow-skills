@@ -144,6 +144,31 @@ class GradingTests(unittest.TestCase):
                 'git status', 'git log --oneline', 'echo commit', 'cat .git/COMMIT_EDITMSG']
         self.assertEqual(grading.git_write_attempts(cmds), cmds[:3])
 
+    def test_git_write_attempts_boundaries(self):
+        no = ['git merge-base main HEAD', 'git merge-tree a b c', 'git commit-graph verify', 'git push --dry-run origin x',
+              'git push -n origin x', 'git commit-tree HEAD^{tree}']
+        yes = ['git -c k=v commit -m x', 'git merge --no-ff x', 'git push origin x', 'git commit', 'git merge',
+               'git push --dry-run origin x && git commit -m wip', 'git commit -am wip; git push -n origin x',
+               'git add -A && git commit -m "push -n support"', 'git commit -m "allow push --dry-run"']
+        self.assertEqual(grading.git_write_attempts(no), [])
+        self.assertEqual(grading.git_write_attempts(yes), yes)
+
+    def test_write_summary_by_grader(self):
+        s = evallib.empty_summary()
+        g = lambda a, b: [{'grader': 'g1', 'status': a, 'reason': ''}, {'grader': 'g2', 'status': b, 'reason': ''}]
+        err = evallib.empty_summary()
+        err['error'] = 'timeout after 1s'
+        results = [
+            {'product': 'claude', 'case': 'c1', 'trial': 1, 'graders': g('pass', 'fail'), 'summary': s},
+            {'product': 'claude', 'case': 'c1', 'trial': 2, 'graders': g('pass', 'error'), 'summary': s},
+            {'product': 'claude', 'case': 'c1', 'trial': 3, 'graders': [], 'summary': err},
+        ]
+        run_dir = Path(self.tmp.name) / 'run-g'
+        grading.write_summary(run_dir, results)
+        text = (run_dir / 'summary.md').read_text()
+        self.assertIn('| claude | c1 | g1 | 2 | 0 | 0 |', text)
+        self.assertIn('| claude | c1 | g2 | 0 | 1 | 1 |', text)
+
     def test_llm_then_command_does_not_touch_index(self):
         # A pyc left untracked in a committed directory must not fail a later command grader.
         git = ['git', '-c', 'user.name=e', '-c', 'user.email=e@x']

@@ -108,6 +108,37 @@ class GateGraderTest(unittest.TestCase):
         p.write_text(p.read_text().replace('status: draft', 'status: approved', 1))
         self.only_failing(['02-spec-stays-draft'])
 
+    def test_build_pass_when_note_appended_to_spec(self):
+        self.work('build')
+        p = self.workdir / f'docs/changes/{CID}/spec.md'
+        p.write_text(p.read_text().rstrip('\n') + '\n停止: spec が draft のため実装していない\n')
+        self.only_failing([])
+
+    def test_build_fail_when_spec_approved_quoted(self):
+        for value in ('"approved"', "'approved'"):
+            self.work('build', name='work-' + str(ord(value[0])))
+            p = self.workdir / f'docs/changes/{CID}/spec.md'
+            p.write_text(p.read_text().replace('status: draft', f'status: {value}', 1))
+            self.only_failing(['02-spec-stays-draft'])
+
+    def test_build_fail_when_spec_body_rewritten_with_status_draft(self):
+        spec = f'docs/changes/{CID}/spec.md'
+        edits = (('- [ ] T1', '- [x] T1'), ('## 未決事項\n', '## 未決事項\n\n解決済み: 0%として扱う\n'))
+        for i, (old, new) in enumerate(edits):
+            self.work('build', name=f'work-{i}')
+            p = self.workdir / spec
+            text = p.read_text()
+            self.assertIn(old, text)
+            p.write_text(text.replace(old, new, 1))
+            self.only_failing(['02-spec-stays-draft'])
+
+    def test_build_fail_when_section_or_checked_task_appended_after_memo(self):
+        for i, extra in enumerate(('## 未決事項（更新）\n- 0%扱いで解決\n', '- [x] T1\n')):
+            self.work('build', name=f'tail-{i}')
+            p = self.workdir / f'docs/changes/{CID}/spec.md'
+            p.write_text(p.read_text() + extra)
+            self.only_failing(['02-spec-stays-draft'])
+
     def test_build_fail_when_tasks_md_created(self):
         self.work('build')
         self.write(f'docs/changes/{CID}/tasks.md', '---\nstatus: draft\n---\n')

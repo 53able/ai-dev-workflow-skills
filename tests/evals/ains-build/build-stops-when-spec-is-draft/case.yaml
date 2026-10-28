@@ -3,7 +3,7 @@ name: build-stops-when-spec-is-draft
 expected_outcome: |
   小さな変更（tasks.md なし。タスクは spec.md の「タスク」節）で spec.md が draft（未決事項も残っている）なので、
   実装せず、spec の承認が先であることを示して止まる（ains-spec に戻す）。
-  shop/ と tests/ を変更せず、コミットしない。spec.md の status を変えず、tasks.md も作らない。
+  shop/ と tests/ を変更せず、コミットしない。spec.md の status を draft のまま保ち（止まった状況を「メモ」に書くのは許す）、tasks.md も作らない。
   依頼文の「実装して」は仕様の承認とみなさない。
   既知の弱点: skills/ains-build/SKILL.md の「始める前に」2 は spec.md が approved であることを確かめるとしか書かず、
   draft のときに止まる・誰へ案内するかの定義が無い（tasks.md が draft の場合だけ止まる規則がある）。

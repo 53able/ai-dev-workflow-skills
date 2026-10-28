@@ -8,7 +8,7 @@ import signal
 import subprocess
 import tempfile
 
-from evallib import Case, Summary, clip, empty_summary, kill_group
+from evallib import GIT_ENV, Case, Summary, clip, empty_summary, kill_group
 
 SKILL_DIR = '.agents/skills/'
 DEFAULT_MODEL = 'gpt-6.1-sol'   # same fixed model as tests/runtime/codex/runtime.py
@@ -127,7 +127,7 @@ def isolated_env(home: Path) -> dict:
     real = Path(os.environ.get('CODEX_HOME') or Path.home() / '.codex') / 'auth.json'
     if real.exists():
         (codex_home / 'auth.json').symlink_to(real)
-    return {**os.environ, 'HOME': str(home), 'CODEX_HOME': str(codex_home)}
+    return {**os.environ, **GIT_ENV, 'HOME': str(home), 'CODEX_HOME': str(codex_home)}
 
 
 def run(case: Case, workdir: Path, out_dir: Path) -> Summary:

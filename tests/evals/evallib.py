@@ -279,4 +279,9 @@ def scaffold(case, workdir, skill_dir, skills_src=REPO / 'skills'):
     r = subprocess.run(['bash', str(script)], cwd=workdir, text=True, capture_output=True, env=git_env())
     if r.returncode != 0:
         raise EvalError(f'{script}: exit {r.returncode}: {r.stderr.strip()}')
+    # Subject runs get GIT_ENV (no global/system git config), so the agent's own commit
+    # needs a repo-local identity.
+    if (workdir / '.git').exists():
+        for k, v in (('user.name', 'eval'), ('user.email', 'eval@example.com')):
+            subprocess.run(['git', 'config', '--local', k, v], cwd=workdir, check=True, env=git_env())
     return place_skills(workdir, skill_dir, skills_src)

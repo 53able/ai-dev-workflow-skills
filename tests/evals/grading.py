@@ -210,11 +210,23 @@ def error_reason(result: dict) -> str | None:
 # git commit / push / merge in a shell command, also with options before the subcommand
 # (git -c k=v commit). Codex's workspace-write sandbox makes .git read-only, so "did not
 # commit/push" graders pass trivially there; attempts are recorded, not judged.
-_GIT_WRITE = re.compile(r'\bgit\b(?:\s+-{1,2}[^\s;&|]+(?:\s+[^\s;&|-][^\s;&|]*)?)*\s+(commit|push|merge)\b')
+_GIT_WRITE = re.compile(r'\bgit\b(?:\s+-{1,2}[^\s;&|]+(?:\s+[^\s;&|-][^\s;&|]*)?)*\s+(commit|push|merge)(?![\w-])')
+
+
+_DRY_PUSH = re.compile(r'(--dry-run|\s-n)(?![\w-])')
+
+
+def _writes(part: str) -> bool:
+    m = _GIT_WRITE.search(part)
+    return bool(m) and not (m.group(1) == 'push' and _DRY_PUSH.search(part, m.end()))
 
 
 def git_write_attempts(commands: list[str]) -> list[str]:
-    return [c for c in commands if _GIT_WRITE.search(c)]
+    """Commands with a git commit/push/merge in any of their ;/&&/||/| parts.
+
+    `git push --dry-run` writes nothing, so that part alone is not counted.
+    """
+    return [c for c in commands if any(_writes(p) for p in re.split(r'&&|\|\||[;|&\n]', c))]
 
 
 def write_summary(run_dir: Path, results: list[dict], now=None) -> None:
@@ -228,11 +240,14 @@ def write_summary(run_dir: Path, results: list[dict], now=None) -> None:
     reasons = collections.defaultdict(collections.Counter)
     meta = collections.defaultdict(lambda: {'version': set(), 'model': set(), 'ignored': set(), 'git': 0})
     git_writes = []
+    by_grader = collections.defaultdict(collections.Counter)
     for r in results:
         key = (r['product'], r['case'])
         status = 'error' if r['summary'].get('error') else trial_status(r['graders'])
         cells[key]['trials'] += 1
         cells[key][status] += 1
+        for gr in r['graders']:
+            by_grader[(r['product'], r['case'], gr['grader'])][gr['status']] += 1
         if status == 'error':
             reasons[r['product']][error_reason(r) or 'unknown'] += 1
         m = meta[r['product']]
@@ -257,6 +272,13 @@ def write_summary(run_dir: Path, results: list[dict], now=None) -> None:
     for (p, c) in sorted(cells):
         n = cells[(p, c)]
         lines.append(f'| {p} | {c} | {n["pass"]}/{n["trials"]} | {n["fail"]} | {n["error"]} | {n["trials"]} |')
+    # Per grader, so a product comparison can leave one grader out. Trials that ended in a
+    # summary error carry no grader results and are not counted here (see 'pass rate' for them).
+    lines += ['', '## pass rate by grader (graded trials only)', '', '| product | case | grader | pass | fail | error |',
+              '|---|---|---|---|---|---|']
+    for (p, c, gid) in sorted(by_grader):
+        n = by_grader[(p, c, gid)]
+        lines.append(f'| {p} | {c} | {gid} | {n["pass"]} | {n["fail"]} | {n["error"]} |')
     lines += ['', '## errors by reason', '']
     if not reasons:
         lines.append('none')

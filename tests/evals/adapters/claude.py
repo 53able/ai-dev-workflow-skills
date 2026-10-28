@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import subprocess
 
-from evallib import Case, Summary, clip, empty_summary, kill_group
+from evallib import GIT_ENV, Case, Summary, clip, empty_summary, kill_group
 
 SKILL_DIR = '.claude/skills/'
 # Pinned so pass rates stay comparable across runs; override with EVAL_CLAUDE_MODEL.
@@ -13,7 +13,8 @@ EDIT_TOOLS = {'Write': 'file_path', 'Edit': 'file_path', 'NotebookEdit': 'notebo
 # Keep user-level settings (~/.claude settings, hooks, plugins) and MCP servers out of the
 # run; stream-json carries the first one only when it is the 'project' source.
 ISOLATION_ARGS = ['--setting-sources', 'project', '--strict-mcp-config', '--permission-mode', 'dontAsk']
-ISOLATION_ENV = {'CLAUDE_CODE_DISABLE_AUTO_MEMORY': '1'}
+# GIT_ENV: the agent's git ignores the user's global git config, as in scaffold and grading.
+ISOLATION_ENV = {'CLAUDE_CODE_DISABLE_AUTO_MEMORY': '1', **GIT_ENV}
 
 
 def _rel(path: str, workdir: Path) -> str:

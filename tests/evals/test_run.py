@@ -240,6 +240,13 @@ class EvalTests(unittest.TestCase):
             evallib.scaffold(c, self.root / 'wd', '.claude/skills/', self.skills)
         self.assertTrue((self.root / 'wd' / '.git' / 'HEAD').is_file())
 
+    def test_scaffold_sets_local_git_identity(self):
+        c = evallib.load_case(self.make_case())
+        evallib.scaffold(c, self.root / 'wd', '.claude/skills/', self.skills)
+        for key, want in (('user.email', 'eval@example.com'), ('user.name', 'eval')):
+            out = subprocess.run(['git', 'config', '--local', key], cwd=self.root / 'wd', text=True, capture_output=True)
+            self.assertEqual(out.stdout.strip(), want)
+
 
 if __name__ == '__main__':
     unittest.main()
