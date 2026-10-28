@@ -201,7 +201,7 @@ empty_rules '# comment\n\n   \n  # indented\n'; check R1 3
 
 # Committed-target mode must be read-only even in a dirty checkout.
 snapshot_target_state() {
-  python3 - <<'STATE'
+  uv run --locked --project "$here/../.." python - <<'STATE'
 import hashlib, json, os, pathlib, subprocess
 root = pathlib.Path('.')
 files = {}

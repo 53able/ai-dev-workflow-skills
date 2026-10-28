@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
-exec python3 "$here/test_new_change.py" "$@"
+exec uv run --locked --project "$here/../.." python "$here/test_new_change.py" "$@"

@@ -9,7 +9,7 @@ bash tests/scripts/test-new-change.sh
 bash tests/distribution/test-distribution.sh
 ```
 
-Requires bash, Python 3 stdlib, git, Node/npm/npx and access to the pinned skills CLI 1.7.4 package (cached or downloadable). No repository dependency is added. The distribution runner installs only into fresh temporary projects, tests Claude Code alone, Codex alone and both together, each in symlink and `--copy` mode, and removes its own temp roots. Child HOME/config settings are isolated; the existing npm package cache is reused. It never invokes either product's model runtime or installs globally.
+Requires bash, uv (Python 3.11+ stdlib via `uv run`), git, Node/npm/npx and access to the pinned skills CLI 1.7.4 package (cached or downloadable). No repository dependency is added. The distribution runner installs only into fresh temporary projects, tests Claude Code alone, Codex alone and both together, each in symlink and `--copy` mode, and removes its own temp roots. Child HOME/config settings are isolated; the existing npm package cache is reused. It never invokes either product's model runtime or installs globally.
 
 `--static-only` skips the CLI matrix. `--log-dir <directory>` retains CLI output and exit codes. `--eval-inventory <original-eval-inventory.json>` additionally verifies the exact migrated file set, hashes and modes under `tests/evals/<skill>/`. The original eval inventory records the pre-move files and is retained privately.
 
