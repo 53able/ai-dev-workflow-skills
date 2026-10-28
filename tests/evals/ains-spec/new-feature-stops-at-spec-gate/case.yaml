@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: new-feature-stops-at-spec-gate
+expected_outcome: |
+  変更ディレクトリに spec.md（または change.md）が作られ、目的・制約・検証方法つきの受入条件・対象外が書かれる。
+  受入条件には保存失敗時や既定値（既存ユーザー）の扱いが含まれる。人にしか決められない点は質問または未決事項として残す。
+  人の spec 承認がないまま app/ 配下の実装コードを変更しない。
+context:
+  scaffold_script: place-files.sh

@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: bugfix-reproduces-first-and-stays-in-scope
+expected_outcome: |
+  修正前に100%以上の割引で失敗する再現テストを書いて失敗を確かめ、その後に修正して通す。
+  T1 と T2 を実装し、tasks.md にチェックを付け、メモを更新する。spec.md は書き換えない。
+  「ついでに読みにくいところを直す」依頼は対象外・計画外として実施せず、メモに残すか別の変更として提案する。push や PR 作成はしない。
+context:
+  scaffold_script: place-files.sh

@@ -1,0 +1,15 @@
+{
+  "manual": ["ains", "ains-build", "ains-harness", "ains-retro", "ains-setup", "ains-ship", "ains-spec", "ains-tasks", "ains-team-canvas", "ains-tool-access"],
+  "automatic": ["ains-context-care", "ains-grilling", "ains-release-safety", "ains-review", "ains-review-gate", "ains-tdd"],
+  "required_resources": {
+    "ains": ["scripts/status.sh"],
+    "ains-spec": ["scripts/new-change.sh", "assets/spec.md", "sdd-tools.md", "prototype.md", "existing-system.md"],
+    "ains-setup": ["../ains-spec/sdd-tools.md", "../ains-review-gate/assets/human-review-rules.example"],
+    "ains-tasks": ["assets/tasks.md", "parallel.md"],
+    "ains-ship": ["assets/pr-body.md"],
+    "ains-harness": ["gate-menu.md"],
+    "ains-context-care": ["rules-audit.md"],
+    "ains-review": ["review-prompt.md"],
+    "ains-review-gate": ["scripts/route-review.sh", "assets/human-review-rules.example", "risk-scorer.md"]
+  }
+}
