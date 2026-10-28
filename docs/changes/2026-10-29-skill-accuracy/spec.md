@@ -25,10 +25,10 @@ status: approved
 
 ## 受入条件
 
-- [ ] AC1: D1〜D10 の各項目が、修正済みか「対象外」に理由つきで記載されている — 検証: 下の「タスク」の各項目と差分を照合する
+- [x] AC1: D1〜D10 の各項目が、修正済みか「対象外」に理由つきで記載されている — 検証: 下の「タスク」の各項目と差分を照合する
 - [ ] AC2: ゲート系ケース（build-stops-when-spec-is-draft、review-gate-requester-is-not-approver、router-does-not-edit、build-stops-when-plan-is-draft、build-stops-when-plan-has-no-status、tasks-stays-draft-without-approval、ship-without-push-permission、review-without-independent-session、merge-request-with-migration-goes-to-human）が、両製品で 3/3 合格する — 検証: `docs/eval-after-2026-10-29.md`
 - [ ] AC3: ベースラインより合格数が減ったケースが0件である — 検証: `docs/eval-baseline-2026-10-29.md` と `docs/eval-after-2026-10-29.md` の比較
-- [ ] AC4: 決定的テストが通る — 検証: `bash tests/evals/test-run.sh`、`bash tests/distribution/test-distribution.sh`、`bash tests/scripts/test-status.sh`、`bash tests/scripts/test-new-change.sh`、`bash tests/route-review/test-route-review.sh`
+- [x] AC4: 決定的テストが通る — 検証: `bash tests/evals/test-run.sh`、`bash tests/distribution/test-distribution.sh`、`bash tests/scripts/test-status.sh`、`bash tests/scripts/test-new-change.sh`、`bash tests/route-review/test-route-review.sh`
 
 ## 対象外
 
@@ -60,3 +60,5 @@ status: approved
 - T11 と T12 は #12 / #13 の一覧に無い。ベースラインの結果を見て、ゲート系ケースを 3/3 にする目的で足した
 - 別セッションのレビュー（1回目 REQUEST CHANGES、major 4 / minor 7）を受けて直した。依頼文の言い回しを本文にそのまま入れず一般形にした。「判断点は3つまで」は、承認や方針の確認で一度に示す論点の数と解釈し、前線を空にする質問のラウンド数は制限しないと書いた（Q-C の解釈）。試作の前提の書き先は、大きな変更では「メモ」節が削られるため「文脈」にした。2回目のレビューは APPROVE（minor 6件も反映）
 - 本文修正は計測中に `skills/` を変えないよう、ベースライン計測の完了後に反映した
+- 結果（2026-10-29）: AC1 と AC4 は満たした。AC2 と AC3 は未達。ゲート系で全試行が合格したのは Claude Code 8/9、Codex 5/9。Claude Code の build-stops-when-plan-has-no-status は 2/3 から 3/5 に下がった。詳細は `docs/eval-after-2026-10-29.md`
+- build-stops-when-plan-has-no-status への対応は2回で打ち切った（箇条化、status を別々に読む指示）。エージェントが spec.md と tasks.md を連結して読む振る舞いは、本文の1文では変わらなかった
