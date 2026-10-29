@@ -2,6 +2,14 @@
 
 版の付け方は [README のバージョン](README.md#バージョン)を参照。この節以降はリリース時に semantic-release が更新する。
 
+## [0.3.3](https://github.com/53able/ai-dev-workflow-skills/compare/v0.3.2...v0.3.3) (2026-10-29)
+
+
+### Bug Fixes
+
+* new-change.sh で長すぎる slug と複数の slug を usage エラーにする ([f2af10e](https://github.com/53able/ai-dev-workflow-skills/commit/f2af10e42de5f0be15c0222656d96be6238f0c14)), closes [#27](https://github.com/53able/ai-dev-workflow-skills/issues/27)
+* status.sh が閉じの --- の無い front matter を承認済みと表示しないようにする ([dd64fb0](https://github.com/53able/ai-dev-workflow-skills/commit/dd64fb07489f8d6bbc6a8b7c8c134a97c5468da0)), closes [#26](https://github.com/53able/ai-dev-workflow-skills/issues/26)
+
 ## [0.3.2](https://github.com/53able/ai-dev-workflow-skills/compare/v0.3.1...v0.3.2) (2026-10-29)
 
 
