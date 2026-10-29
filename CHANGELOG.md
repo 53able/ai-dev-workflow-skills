@@ -2,6 +2,18 @@
 
 版の付け方は [README のバージョン](README.md#バージョン)を参照。この節以降はリリース時に semantic-release が更新する。
 
+## [0.3.4](https://github.com/53able/ai-dev-workflow-skills/compare/v0.3.3...v0.3.4) (2026-10-29)
+
+
+### Bug Fixes
+
+* Codex が $<名前> で注入したスキルを起動とみなし、[#25](https://github.com/53able/ai-dev-workflow-skills/issues/25) の計測を記録する ([3e6d004](https://github.com/53able/ai-dev-workflow-skills/commit/3e6d004ba28b8732ea3879876a6cd54775bd96ca))
+* route-review.sh の一時ディレクトリを TMPDIR の下に作る ([0e922d2](https://github.com/53able/ai-dev-workflow-skills/commit/0e922d22a0b7baccb264c28efdeb75a55b084278))
+* スキル本文の残る指摘を一般形に直し、grader 02 の要件の優先を明記する ([dd56de8](https://github.com/53able/ai-dev-workflow-skills/commit/dd56de8306654b4d3c62b1920611421824339076)), closes [#25](https://github.com/53able/ai-dev-workflow-skills/issues/25) [#25](https://github.com/53able/ai-dev-workflow-skills/issues/25)
+* レビュー指摘の文言を整理する（重複、長文、参照の形、古い引用） ([72c5c45](https://github.com/53able/ai-dev-workflow-skills/commit/72c5c456f360541d7a4049a9e07c807198927735)), closes [#25](https://github.com/53able/ai-dev-workflow-skills/issues/25)
+* レビュー指摘を反映する（作業ツリー内の TMPDIR、承認文の定義、ship の許可の規則） ([667af10](https://github.com/53able/ai-dev-workflow-skills/commit/667af101a77852cacf93dbb5f6e2ae88c8ca2cb3)), closes [#25](https://github.com/53able/ai-dev-workflow-skills/issues/25)
+* 推定で起動とみなした Codex のスキルを分けて記録し、計測の記録の誤りを直す ([1de7e93](https://github.com/53able/ai-dev-workflow-skills/commit/1de7e93f6569b8344fc8a745fa28d7fe1d54b9ea)), closes [#25](https://github.com/53able/ai-dev-workflow-skills/issues/25)
+
 ## [0.3.3](https://github.com/53able/ai-dev-workflow-skills/compare/v0.3.2...v0.3.3) (2026-10-29)
 
 
