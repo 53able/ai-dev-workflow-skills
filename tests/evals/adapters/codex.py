@@ -34,7 +34,7 @@ def to_codex_prompt(prompt: str) -> str:
 def skill_name(workdir, name: str):
     """`name:` in the front matter of the working copy's .agents/skills/<name>/SKILL.md, or None."""
     try:
-        text = (Path(workdir) / '.agents/skills' / name / 'SKILL.md').read_text()
+        text = (Path(workdir) / SKILL_DIR / name / 'SKILL.md').read_text()
     except OSError:
         return None
     m = re.match(r'---\n(.*?)\n---\n', text, re.S)
@@ -77,6 +77,7 @@ def invoked_skills(raw: str, workdir=None) -> list[str]:
     directory and then names `SKILL.md`, counts as an invocation of <name>. A same-named
     SKILL.md elsewhere (e.g. ~/.codex/skills) does not count. Only command_execution
     items count; the same path inside agent_message text or in the prompt echo does not.
+    Codex also injects a `$name` skill without any read; run() adds those as injected_skills.
     """
     roots = {'', './'}
     if workdir:
