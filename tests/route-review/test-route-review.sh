@@ -182,6 +182,12 @@ RUN_ENV="LC_ALL=en_US.UTF-8"; check U 10 content
 new_repo; ln -s src linkdir
 check L 3
 
+# 一時ディレクトリは TMPDIR の下に作る（無ければ判定できず 3）
+new_repo; echo "x" >src/auth/new.ts; mkdir -p "$work/tmpdir"
+RUN_ENV="TMPDIR=$work/tmpdir"; check M1 10 path
+new_repo; echo "x" >src/auth/new.ts
+RUN_ENV="TMPDIR=$work/no-such-dir"; check M2 3
+
 new_repo; echo "isAdmin();" >>src/lib/util.ts; g add -A; git show HEAD:src/lib/util.ts >src/lib/util.ts
 check S1 10 content
 

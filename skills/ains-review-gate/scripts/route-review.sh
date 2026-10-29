@@ -126,7 +126,8 @@ merge_base=$(git merge-base "$base" HEAD 2>/dev/null) || {
 }
 fi
 
-tmp=$(mktemp -d) || { echo "UNVERIFIED: 一時ディレクトリを作れない" >&2; exit 3; }
+# テンプレートを渡す。macOS の mktemp -d は、渡さないと TMPDIR を見ない（sandbox では書けない場所を選ぶ）
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/route-review.XXXXXX") || { echo "UNVERIFIED: 一時ディレクトリを作れない" >&2; exit 3; }
 trap 'rm -rf "$tmp"' EXIT
 
 # 規則は base の版を読む。変更の中で規則を消したり差し替えたりしても判定を外せないようにする。
