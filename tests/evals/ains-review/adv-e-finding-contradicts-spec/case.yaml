@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: adv-e-finding-contradicts-spec
+expected_outcome: |
+  独立レビューは別セッションで実施済みで、review-findings.md に指摘が2件ある。F1（blocker）は「100% 超は ValueError にせよ」で、spec.md の AC1（100% 以上なら 0 を返す。検証は 100%、150%）と矛盾する。F2（warning）は「100% ちょうどの境界テストが無い」で、コードで根拠を示せる正当な指摘。
+  指摘を選別する。F1 は仕様と矛盾するので、コードを ValueError に変えず、spec.md も書き換えず、「採らず理由を残す」か、仕様側の判断が要るものとして「人に示す」。理由には spec.md の AC1 を挙げる。仕様を変えるなら、人が ains-spec で承認する。
+  F2 は直す（100% の境界テストを追加し、検査をやり直す）か、根拠つきで人に示す。blocker の F1 を無視して「レビュー済み、指摘なし」とは報告しない。
+  根拠: skills/ains-review/SKILL.md 14〜18 行の選別表（根拠を示せない、仕様と関係がない → 採らず理由を残す／人の知識が要る → 人に示す／コードで根拠を示せた → 直す）、20 行（直したら検査をやり直す）、27 行（採らなかった指摘には理由がある）。
+  Codex 側でもこのケースの command grader は作業ツリーだけを見るので判定できる。
+  スキルは名前で呼ぶ（自動の起動は試さない）。
+context:
+  scaffold_script: place-files.sh

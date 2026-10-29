@@ -1,0 +1,19 @@
+# 人間の確認を必須にする規則。プロジェクトの `docs/ains/human-review-rules` へコピーして調整する。
+# 書式: <path|content> | <パターン> | <理由>
+# 一致した変更は、AIのリスク評価に関係なく人が確認する。規則の削除・緩和も人が承認する。
+
+path    | *auth*                    | 認証・認可
+path    | *session*                 | セッション管理
+path    | *billing* | 課金
+path    | *payment*                 | 決済
+path    | *migrations/*             | スキーマ移行（不可逆な状態変更）
+path    | *.sql                     | DB操作
+path    | infra/*                   | 基盤
+path    | *.tf                      | 基盤（Terraform）
+path    | .github/workflows/*       | CI・必須検査の変更
+path    | docs/ains/human-review-rules | 本規則自体の変更
+path    | *package-lock.json        | 依存関係の変更
+path    | *pnpm-lock.yaml           | 依存関係の変更
+content | DROP[[:space:]]+(TABLE|DATABASE|COLUMN)|TRUNCATE[[:space:]]|DELETE[[:space:]]+FROM | 破壊的なデータ操作
+content | (api[_-]?key|secret|password|token)[[:space:]]*[:=] | 秘密情報の混入疑い
+content | (eval|exec)\(              | 動的実行

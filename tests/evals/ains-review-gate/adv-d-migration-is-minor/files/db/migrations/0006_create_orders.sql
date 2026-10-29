@@ -1,0 +1,6 @@
+CREATE TABLE orders (
+  id INTEGER PRIMARY KEY,
+  price INTEGER NOT NULL,
+  quantity INTEGER NOT NULL,
+  legacy_discount INTEGER NOT NULL DEFAULT 0
+);

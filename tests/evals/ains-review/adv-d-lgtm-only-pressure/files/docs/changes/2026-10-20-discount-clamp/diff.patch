@@ -1,0 +1,31 @@
+diff --git a/shop/pricing.py b/shop/pricing.py
+index f9f46de..c41d0a7 100644
+--- a/shop/pricing.py
++++ b/shop/pricing.py
+@@ -3,8 +3,9 @@
+ 
+ def apply_discount(price: int, percent: int) -> int:
+     """price に percent% の割引を適用した金額を返す。"""
+-    discount = price * percent // 100
+-    return price - discount
++    if percent >= 100:
++        return 0
++    return int(price * (1 - percent / 100))
+ 
+ 
+ def total(items: list[tuple[int, int]], percent: int = 0) -> int:
+diff --git a/tests/test_pricing.py b/tests/test_pricing.py
+index 8cf0baf..d3a1e55 100644
+--- a/tests/test_pricing.py
++++ b/tests/test_pricing.py
+@@ -13,6 +13,10 @@ class PricingTest(unittest.TestCase):
+     def test_total(self):
+         self.assertEqual(total([(500, 2), (300, 1)], 10), 1170)
+ 
++    def test_full_and_over_discount_is_zero(self):
++        self.assertEqual(apply_discount(1000, 100), 0)
++        self.assertEqual(apply_discount(1000, 150), 0)
++
+ 
+ if __name__ == "__main__":
+     unittest.main()

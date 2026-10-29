@@ -199,6 +199,132 @@ class GradingTests(unittest.TestCase):
             res = self.grade([make_grader('01', 'command', run='! git config eval.marker')], None)
         self.assertEqual(res[0]['status'], 'pass')
 
+    def test_unsafe_git_config_stops_grading(self):
+        marker = Path(self.tmp.name) / 'ran'
+        for key, value in [('core.fsmonitor', f'touch {marker}'), ('diff.x.textconv', 'cat'),
+                           ('filter.x.clean', 'cat'), ('include.path', '/tmp/x'), ('protocol.ext.allow', 'always'),
+                           ('gpg.program', f'touch {marker}'), ('log.showSignature', 'true'),
+                           ('core.worktree', '/tmp'), ('submodule.x.update', '!sh')]:
+            with self.subTest(key=key):
+                subprocess.run(['git', 'config', '--local', key, value], cwd=self.work, check=True)
+                self.addCleanup(subprocess.run, ['git', 'config', '--local', '--unset-all', key], cwd=self.work)
+                calls = []
+                res = self.grade([make_grader('01', 'command', run=f'touch {marker}'), make_grader('02', 'llm')],
+                                 lambda p: calls.append(p) or '{"pass": true, "reason": "x"}')
+                self.assertEqual([r['status'] for r in res], ['error', 'error'])
+                self.assertIn(key.lower(), res[0]['reason'].lower())
+                self.assertEqual(grading.error_category(res[0]['reason']), 'unsafe git config')
+                self.assertFalse(marker.exists())
+                self.assertEqual(calls, [])
+                subprocess.run(['git', 'config', '--local', '--unset-all', key], cwd=self.work, check=True)
+
+    def test_relocated_or_nested_repository_stops_grading(self):
+        marker = Path(self.tmp.name) / 'ran'
+        evil = Path(self.tmp.name) / 'evil'
+        subprocess.run(['git', 'init', '-q', '--bare', str(evil)], check=True)
+        subprocess.run(['git', 'config', '--file', str(evil / 'config'), 'core.fsmonitor', f'touch {marker}'], check=True)
+
+        def commondir(w):
+            (w / '.git' / 'commondir').write_text(str(evil) + '\n')
+
+        def gitfile(w):
+            import shutil
+            shutil.rmtree(w / '.git')
+            (w / '.git').write_text(f'gitdir: {evil}\n')
+
+        def nested(w):
+            sub = w / 'sub'
+            sub.mkdir()
+            subprocess.run(['git', 'init', '-q'], cwd=sub, check=True)
+            subprocess.run(['git', 'config', '--local', 'core.fsmonitor', f'touch {marker}'], cwd=sub, check=True)
+
+        for name, mutate in [('commondir', commondir), ('gitfile', gitfile), ('nested', nested)]:
+            with self.subTest(name), tempfile.TemporaryDirectory(prefix='ains-gradetest-') as tmp:
+                w = Path(tmp) / 'project'
+                subprocess.run(['git', 'clone', '-q', str(self.work), str(w)], check=True, capture_output=True)
+                mutate(w)
+                self.assertIsNotNone(grading.unsafe_git_config(w))
+                c = self.case([make_grader('01', 'command', run=f'touch {marker}'), make_grader('02', 'llm')])
+                res = grading.grade(c, w, evallib.empty_summary(), Path(tmp) / 'out', llm=lambda p: '{"pass": true, "reason": "x"}')
+                self.assertEqual([r['status'] for r in res], ['error', 'error'])
+                self.assertFalse(marker.exists())
+
+    def test_evidence_does_not_run_submodule_config(self):
+        marker = Path(self.tmp.name) / 'ran'
+        sub = self.work / 'sub'
+        sub.mkdir()
+        git = ['git', '-c', 'user.name=e', '-c', 'user.email=e@x']
+        subprocess.run(['git', 'init', '-q'], cwd=sub, check=True)
+        subprocess.run([*git, 'commit', '-q', '--allow-empty', '-m', 's'], cwd=sub, check=True)
+        subprocess.run(['git', 'add', 'sub'], cwd=self.work, check=True, capture_output=True)
+        subprocess.run([*git, 'commit', '-qm', 'gitlink'], cwd=self.work, check=True)
+        subprocess.run(['git', 'config', '--local', 'core.fsmonitor', f'touch {marker}'], cwd=sub, check=True)
+        (sub / 'f').write_text('x')
+        grading.collect_git_evidence(self.work)
+        self.assertFalse(marker.exists())
+
+    def test_hooks_never_run_during_grading(self):
+        marker = Path(self.tmp.name) / 'ran'
+        hook = self.work / '.git' / 'hooks' / 'post-index-change'
+        hook.write_text(f'#!/bin/sh\ntouch {marker}\n')
+        hook.chmod(0o755)
+        (self.work / 'a.txt').write_text('changed\n')
+        res = self.grade([make_grader('01', 'command', run='git status --porcelain >/dev/null && git diff --quiet; true'),
+                          make_grader('02', 'llm')], lambda p: '{"pass": true, "reason": "x"}')
+        self.assertEqual([r['status'] for r in res], ['pass', 'pass'])
+        self.assertFalse(marker.exists())
+
+    def test_command_grader_gets_no_credentials_or_home(self):
+        with mock.patch.dict(os.environ, {'NPM_TOKEN': 'leak', 'ANTHROPIC_API_KEY': 'leak'}):
+            res = self.grade([make_grader('01', 'command', run=f'test -z "$NPM_TOKEN$ANTHROPIC_API_KEY" && '
+                                          f'test "$HOME" != "{Path.home()}" && test "$GH_TOKEN" = ains-eval-invalid')], None)
+        self.assertEqual(res[0]['status'], 'pass', res)
+
+    @unittest.skipUnless(os.path.exists(grading.SANDBOX_EXEC), 'sandbox-exec is macOS only')
+    def test_command_grader_sandbox_blocks_real_home_and_network(self):
+        home = Path.home().resolve()
+        probe = next((p for p in (home / '.zshrc', home / '.bashrc', home / '.profile') if p.is_file()), None)
+        if probe is None:
+            probe = home
+        res = self.grade([make_grader('01', 'command', run=f'! ls "{probe}" >/dev/null 2>&1'),
+                          make_grader('02', 'command', run='! python3 -I -c "import socket; socket.create_connection((\'1.1.1.1\', 53), 3)" 2>/dev/null'),
+                          make_grader('03', 'command', run='echo ok > w.txt && python3 -I -c "print(open(\'w.txt\').read())"')], None)
+        self.assertEqual([r['status'] for r in res], ['pass', 'pass', 'pass'], res)
+
+    def test_ordinary_git_config_is_graded(self):
+        for key, value in [('user.name', 'eval'), ('remote.origin.url', '.git/remote.git'), ('core.bare', 'false')]:
+            subprocess.run(['git', 'config', '--local', key, value], cwd=self.work, check=True)
+        self.assertIsNone(grading.unsafe_git_config(self.work))
+        self.assertIsNone(grading.unsafe_git_config(Path(self.tmp.name) / 'no-repo'))
+
+    def test_every_case_scaffold_has_safe_git_config(self):
+        for d in evallib.discover_cases():
+            with self.subTest(case=d.name), tempfile.TemporaryDirectory(prefix='ains-gradetest-') as tmp:
+                work = Path(tmp) / 'project'
+                evallib.scaffold(evallib.load_case(d), work, '.claude/skills/')
+                self.assertIsNone(grading.unsafe_git_config(work))
+
+
+class SubjectEnvTests(unittest.TestCase):
+    def test_git_transports_only_to_local_paths(self):
+        with tempfile.TemporaryDirectory(prefix='ains-subject-') as tmp:
+            env = evallib.subject_env({'PATH': os.environ['PATH'], 'SSH_AUTH_SOCK': '/x'})
+            self.assertNotIn('SSH_AUTH_SOCK', env)
+            leaky = evallib.subject_env({'PATH': '/bin', 'AWS_SECRET_ACCESS_KEY': 's', 'NPM_TOKEN': 't', 'DB_PASSWORD': 'p',
+                                         'ANTHROPIC_API_KEY': 'k', 'GIT_DIR': '/x', 'LANG': 'C'})
+            self.assertEqual(sorted(k for k in leaky if k not in evallib.SUBJECT_ENV), ['ANTHROPIC_API_KEY', 'LANG', 'PATH'])
+            run = lambda *a: subprocess.run(['git', *a], cwd=tmp, env=env, capture_output=True, text=True)
+            run('init', '-q', '-b', 'main')
+            run('-c', 'user.name=e', '-c', 'user.email=e@x', 'commit', '-q', '--allow-empty', '-m', 'x')
+            run('init', '-q', '--bare', '.git/remote.git')
+            self.assertEqual(run('push', '-q', '.git/remote.git', 'main').returncode, 0)
+            for url in ('https://example.invalid/r.git', 'ssh://git@example.invalid/r.git', 'git@example.invalid:r.git',
+                        'ext::sh -c true'):
+                with self.subTest(url=url):
+                    p = run('push', url, 'main')
+                    self.assertNotEqual(p.returncode, 0)
+                    self.assertRegex(p.stderr, r'not allowed|transport')
+
 
 if __name__ == '__main__':
     unittest.main()

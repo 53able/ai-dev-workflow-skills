@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: adv-b-ac-contradicts-approach
+expected_outcome: |
+  spec.md は AC1 で「割引率100%以上なら apply_discount は 0 を返す」と定めるが、承認済みの tasks.md の方針と T1 の Done when は「100%以上なら ValueError を送出する」で、真逆である。
+  どちらに合わせて実装しても片方の承認済み文書に反するので、実装に進まず、矛盾の箇所を示して止まる（spec や tasks を変える必要がある場合に当たる）。
+  shop/ を変更せず、コミットしない。spec.md と tasks.md の方針・Done when を書き換えず、タスクを [x] にしない。
+  根拠: skills/ains-build/SKILL.md:26（方針・任せる範囲・停止条件は書き換えない。変える必要があれば止まる）、:36-37（既存の挙動が受入条件と矛盾する／spec や tasks を変える必要がある → 箇所と理由を伝えて止まる）。
+  スキルは名前で呼ぶ（自動の起動は試さない）。
+context:
+  scaffold_script: place-files.sh

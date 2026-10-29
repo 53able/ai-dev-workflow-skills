@@ -13,7 +13,7 @@ import shutil
 import subprocess
 import tempfile
 
-from evallib import Case, Summary, git_env, stopping
+from evallib import SECRET_ENV, SUBJECT_ENV, SUBJECT_UNSET, Case, Summary, git_env, stopping
 
 # One grading model for every product under test, so pass rates are comparable.
 GRADER_MODEL = os.environ.get('EVAL_GRADER_MODEL', 'claude-sonnet-5-5')
@@ -34,7 +34,7 @@ DIFF_EXCLUDES = [':(exclude,glob)**/__pycache__/**', ':(exclude,glob)**/*.pyc']
 
 
 def _git(workdir, *args, env=None):
-    p = subprocess.run(['git', *args], cwd=workdir, text=True, capture_output=True, env=env or git_env())
+    p = subprocess.run(['git', *args], cwd=workdir, text=True, capture_output=True, env=env or grader_git_env())
     return p.stdout if p.returncode == 0 else f'(git {" ".join(args)} failed: {p.stderr.strip()})'
 
 
@@ -50,11 +50,11 @@ def collect_git_evidence(workdir):
     # copy of the index so the real index, which command graders read, stays unchanged.
     index = Path(workdir) / _git(workdir, 'rev-parse', '--git-path', 'index').strip()
     with tempfile.TemporaryDirectory(prefix='ains-grade-index-') as tmp:
-        env = {**git_env(), 'GIT_INDEX_FILE': str(Path(tmp) / 'index')}
+        env = {**grader_git_env(), 'GIT_INDEX_FILE': str(Path(tmp) / 'index')}
         if index.is_file():
             shutil.copy(index, env['GIT_INDEX_FILE'])
         subprocess.run(['git', 'add', '-A', '-N'], cwd=workdir, capture_output=True, env=env)
-        diff = _git(workdir, 'diff', base, '--', '.', *DIFF_EXCLUDES, env=env)
+        diff = _git(workdir, 'diff', '--no-ext-diff', '--no-textconv', '--ignore-submodules=all', base, '--', '.', *DIFF_EXCLUDES, env=env)
     return _clip(diff), _clip(_git(workdir, 'log', '--stat', '--format=%h %s'))
 
 
@@ -110,10 +110,90 @@ def _result(grader, status, reason):
     return {'grader': grader.id, 'type': grader.type, 'status': status, 'reason': reason}
 
 
+# Keys in the working copy's git config that make the grader's own git (or the diff for the
+# llm grader) run a program the agent chose. Their presence stops grading of the trial.
+UNSAFE_GIT_CONFIG = re.compile(
+    r'^(core\.(fsmonitor|hookspath|sshcommand|pager|editor|gitproxy|askpass|alternaterefscommand|worktree)'
+    r'|diff\.external|diff\..+\.(textconv|command)|(diff|merge)tool\..*|merge\..+\.driver|filter\..+'
+    r'|include\.path|includeif\..+|protocol\..*allow|url\..+\.(insteadof|pushinsteadof)|credential\..*'
+    r'|uploadpack\..*|receive\..*|remote\..+\.(uploadpack|receivepack)|gpg\..*|log\.showsignature'
+    r'|sequence\.editor|pager\..*|submodule\..*|extensions\..*)=',
+    re.I)
+# Graders read the repository; nothing they run should leave it. Command-scope config also
+# reaches git processes started inside submodules.
+GRADER_GIT_ENV = {'GIT_ALLOW_PROTOCOL': 'file', 'GIT_CONFIG_COUNT': '5',
+                  'GIT_CONFIG_KEY_0': 'core.fsmonitor', 'GIT_CONFIG_VALUE_0': 'false',
+                  'GIT_CONFIG_KEY_1': 'diff.ignoreSubmodules', 'GIT_CONFIG_VALUE_1': 'all',
+                  'GIT_CONFIG_KEY_2': 'log.showSignature', 'GIT_CONFIG_VALUE_2': 'false',
+                  'GIT_CONFIG_KEY_3': 'submodule.recurse', 'GIT_CONFIG_VALUE_3': 'false',
+                  # git status/diff/add rewrite the index and would run .git/hooks/post-index-change.
+                  'GIT_CONFIG_KEY_4': 'core.hooksPath', 'GIT_CONFIG_VALUE_4': os.devnull}
+# macOS: command graders run the agent's code (tests, imports), so they get no network and no
+# access to the real home; elsewhere (CI) only the environment below applies.
+SANDBOX_EXEC = '/usr/bin/sandbox-exec'
+
+
+def grader_profile(workdir):
+    home = Path.home().resolve()
+    return ('(version 1)(allow default)(deny network*)'
+            f'(deny file-read* file-write* (subpath "{home}"))'
+            f'(allow file-read* file-write* (subpath "{Path(workdir).resolve()}"))')
+
+
+def grader_exec_env(home):
+    """Command grader environment: no credentials, a throwaway HOME, the grader git settings."""
+    env = {k: v for k, v in os.environ.items() if k not in SUBJECT_UNSET and not SECRET_ENV.search(k)}
+    return {**env, **SUBJECT_ENV, **GRADER_GIT_ENV, 'HOME': str(home)}
+
+
+def grader_git_env():
+    return {**git_env(), **GRADER_GIT_ENV}
+
+
+def unsafe_git_config(workdir) -> str | None:
+    """Why grading the working copy could run a program the agent chose, or None.
+
+    The repository must be a plain .git directory (no gitfile, symlink or commondir that
+    moves config elsewhere), contain no nested repository or gitlink, and its resolved
+    config must have no key that makes git run a program.
+    """
+    workdir = Path(workdir)
+    git_dir = workdir / '.git'
+    if not git_dir.exists() and not git_dir.is_symlink():
+        return None
+    if git_dir.is_symlink() or not git_dir.is_dir():
+        return '.git is not a plain directory'
+    if (git_dir / 'commondir').exists():
+        return '.git/commondir'
+    for root, dirs, files in os.walk(workdir):
+        if Path(root) == workdir:
+            dirs[:] = [d for d in dirs if d != '.git']
+        if '.git' in dirs or '.git' in files:
+            return f'nested repository: {Path(root).relative_to(workdir) / ".git"}'
+    # Even these reads must not start the repository's fsmonitor (ls-files does).
+    run = lambda *a, env=None: subprocess.run(['git', *a], cwd=workdir, text=True, capture_output=True,
+                                              env=env or grader_git_env(), timeout=COMMAND_TIMEOUT)
+    p = run('rev-parse', '--absolute-git-dir')
+    if p.returncode != 0 or Path(p.stdout.strip()).resolve() != git_dir.resolve():
+        return f'git dir resolves elsewhere: {p.stdout.strip() or p.stderr.strip()[:200]}'
+    p = run('ls-files', '-s')
+    if any(line.startswith('160000 ') for line in p.stdout.splitlines()):
+        return 'gitlink in index'
+    p = run('config', '--list', '--no-includes', '--local')
+    if p.returncode != 0:
+        return f'config unreadable ({p.stderr.strip()[:200]})'
+    found = sorted({line.split('=', 1)[0] for line in p.stdout.splitlines() if UNSAFE_GIT_CONFIG.match(line)})
+    return ', '.join(found) or None
+
+
 def grade_command(grader, workdir, evidence_dir):
+    cmd = ['bash', '-c', grader.run]
+    if os.path.exists(SANDBOX_EXEC):
+        cmd = [SANDBOX_EXEC, '-p', grader_profile(workdir), *cmd]
     try:
-        p = subprocess.run(['bash', '-c', grader.run], cwd=workdir, text=True, capture_output=True,
-                           timeout=COMMAND_TIMEOUT, env=git_env())
+        with tempfile.TemporaryDirectory(prefix='ains-grader-home-') as home:
+            p = subprocess.run(cmd, cwd=workdir, text=True, capture_output=True,
+                               timeout=COMMAND_TIMEOUT, env=grader_exec_env(home))
     except subprocess.TimeoutExpired as exc:
         (evidence_dir / f'{grader.id}.stdout').write_text(_text(exc.stdout))
         (evidence_dir / f'{grader.id}.stderr').write_text(_text(exc.stderr))
@@ -160,8 +240,14 @@ def grade(case: Case, workdir: Path, summary: Summary, out_dir: Path, llm=None) 
     evidence = out_dir / 'graders'
     evidence.mkdir(exist_ok=True)
     results = []
+    try:
+        unsafe = unsafe_git_config(workdir)
+    except subprocess.TimeoutExpired:
+        unsafe = 'git timed out reading the repository'
     for g in sorted(case.graders, key=lambda g: g.id):
-        if stopping():
+        if unsafe:
+            results.append(_result(g, 'error', f'unsafe git config in working copy: {unsafe}'))
+        elif stopping():
             results.append(_result(g, 'error', 'interrupted'))
         elif g.type == 'command':
             results.append(grade_command(g, workdir, evidence))
@@ -186,6 +272,7 @@ ERROR_CATEGORIES = [
     (r'^skill not invoked', 'skill not invoked'),
     (r'cannot start|failed to start', 'start failed'),
     (r'exited with', 'exit'),
+    (r'^unsafe git config', 'unsafe git config'),
     (r'^llm call failed', 'llm call failed'),
     (r'^invalid grader output', 'invalid grader output'),
 ]

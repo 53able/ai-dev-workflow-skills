@@ -19,6 +19,28 @@ REPO = HERE.parents[1]
 SCHEMA_VERSION = '1.1'
 # Keep the user's git config (commit.gpgsign, core.hooksPath, ...) out of scaffold and grading.
 GIT_ENV = {'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_CONFIG_NOSYSTEM': '1'}
+# The agent under test must not reach real remotes or accounts: git transports only to
+# local paths (the cases' .git/remote.git), no ssh, and gh/GitHub tokens are unusable.
+SUBJECT_ENV = {**GIT_ENV, 'GIT_ALLOW_PROTOCOL': 'file', 'GIT_SSH_COMMAND': 'false', 'GIT_TERMINAL_PROMPT': '0',
+               'GH_TOKEN': 'ains-eval-invalid', 'GITHUB_TOKEN': 'ains-eval-invalid',
+               'GH_CONFIG_DIR': '/nonexistent-ains-eval-gh', 'GH_PROMPT_DISABLED': '1',
+               # git's default ~/.config/git/{ignore,attributes} are unreadable in Claude's sandbox
+               # and only add warnings to the agent's output.
+               'GIT_CONFIG_COUNT': '2', 'GIT_CONFIG_KEY_0': 'core.excludesFile', 'GIT_CONFIG_VALUE_0': os.devnull,
+               'GIT_CONFIG_KEY_1': 'core.attributesFile', 'GIT_CONFIG_VALUE_1': os.devnull}
+SUBJECT_UNSET = ('SSH_AUTH_SOCK', 'GIT_CONFIG_PARAMETERS', 'GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE',
+                 'GIT_OBJECT_DIRECTORY', 'GIT_COMMON_DIR')
+# Credentials in the caller's environment stay out of the subject process (Bash can print them
+# into the outputs), except the ones the product CLIs log in with.
+SECRET_ENV = re.compile(r'TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|_KEY$|_KEY_|SESSION|COOKIE|^AWS_|^AZURE_|^GOOGLE_', re.I)
+LOGIN_ENV = {'ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN', 'OPENAI_API_KEY', 'CODEX_API_KEY'}
+
+
+def subject_env(base=None, login=LOGIN_ENV):
+    """Environment for the agent under test; login: the credential variables its CLI may keep."""
+    env = {k: v for k, v in (base if base is not None else os.environ).items()
+           if k not in SUBJECT_UNSET and (k in login or not SECRET_ENV.search(k))}
+    return {**env, **SUBJECT_ENV}
 TIMELINE_CHARS = 400   # per timeline entry; enough to see a test failure, bounded for the grader
 
 

@@ -100,6 +100,7 @@ class IsolatedEnvTests(unittest.TestCase):
             self.assertEqual(env['CODEX_HOME'], str(Path(tmp, '.codex')))
             self.assertEqual(env['GIT_CONFIG_GLOBAL'], os.devnull)
             self.assertEqual(env['GIT_CONFIG_NOSYSTEM'], '1')
+            self.assertEqual((env['GIT_ALLOW_PROTOCOL'], env['GH_TOKEN']), ('file', 'ains-eval-invalid'))
             self.assertEqual(sorted(p.name for p in Path(tmp, '.codex').iterdir()), ['auth.json'])
             self.assertEqual(Path(tmp, '.codex', 'auth.json').resolve(), Path(real, 'auth.json').resolve())
 
