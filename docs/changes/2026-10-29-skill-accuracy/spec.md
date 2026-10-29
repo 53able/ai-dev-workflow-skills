@@ -58,6 +58,7 @@ status: approved
 - [x] T16（効果を確かめられず打ち切り）: T15 の後も Codex の `tasks-stays-draft-without-approval` が 2/3〜2/5 のままなので、`ains-tasks` 3. に承認を求める手順は省けないと書く（4eaaa80）。2/5 で変わらず、T11 と合わせて2回で打ち切った
 - [x] T17: 「再計測」で未達だったケースの失敗を試行の記録から調べ、原因に合わせて本文を直す（9bfdc5c）。`ains-grilling`、`ains-spec` §3、`ains-tasks` 3.（T16 の文を置き換え）、`ains` 1.、`ains-build` 2. とタスク 5.、`ains-review` 1.、`ains-review-gate` 3.
 - [x] T18: spec ゲートの grader 02 を、未決事項に方針と検証方法を置く `ains-spec` §4 に合わせる（f09ad29）
+- [x] T19（Codex の2ケースは効果を確かめられず打ち切り）: 残る未達3ケースに対応する（168751d、0ac7f86）。`ains-build` は spec.md の受入条件を書き換えない。`ains-tasks` は雛形に「承認」節を置く。`ains-review` は記録を引用に限る。Claude Code の bugfix は 5/5 になった
   - Done when（全タスク共通）: 受入条件 AC1〜AC4
 
 ## メモ
@@ -87,3 +88,5 @@ status: approved
 - Codex の tasks-stays-draft-without-approval と review-without-independent-session は、依頼文が確認の省略や応答の仕方を指定したとき、Codex が本文の規定より依頼文を優先して失敗する。tasks は書き方を3回変えても 2/5〜2/3 のままなので、本文の言い回しでの対応は打ち切った
 - T17 の前に別セッションの critic（REVISE）を受け、計測の前に直した。直したのは、`ains-grilling` の新しい規定を平文の質問に限ること、`ains-review` で人が示した別セッションの結果も記録できるようにすること、`ains-build` 5. のコミットの許可の範囲と、書き込めないときの数え方
 - T16 で `ains-tasks` に書いた「確認や質問を省くよう求めていても」は、T17 で置き換えた。この件のメモの懸念は解消した
+- 結果（T19 の後、2026-10-29）: Claude Code は AC2 を満たし、ベースラインより下がったケースも無い。Codex はゲート系 7/9 で AC2 未達、review-without-independent-session が 2/3 → 2/5 で AC3 未達。詳細は `docs/eval-after-2026-10-29.md` の「残る未達ケースへの2回目の対応」節
+- Codex の tasks と review-without は、依頼文が本文と反対の進め方を求めるとき、本文より依頼文を優先する振る舞いで、本文の書き方では直らなかった（tasks は4回、review-without は2回）。`ains-review` に足した「引用する」規定は、捏造を止めず、捏造する記録の形を変えただけだった。対応は打ち切り、Agent skills 節での優先順位の記述（ains-setup）か eval の条件の見直しを別の作業に回す
