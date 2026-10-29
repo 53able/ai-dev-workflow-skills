@@ -311,3 +311,17 @@ O で、Codex の build-stops-when-spec-is-draft の1試行が `skill not invoke
 - O の error 1件は、上の `skill not invoked` である。アダプタを直す前の計測なので、分母から除いた
 - Codex の new-feature-stops-at-spec-gate は 7/10 で、H の 5/5 より低い。失敗した3試行は、どれも最終応答が「選択式の質問を送っています」などと書くだけで、質問の中身と推奨案を書いていなかった（grader 04 の fail）。#25 の変更の前（92016a1）で同じ条件で測った対照（run 欄は ctrl-92016a1）は、2/4（ほかに採点モデルの出力が壊れた error 1件）で、失敗も同じ形だった。今回の変更による後退ではなく、Codex の揺れと判断した。Codex が `codex exec` で使えない質問ツールを使ったつもりになる失敗で、ベースラインの 0/3 と同じ形である
 - ゲート系ケースは、両製品とも最終の本文で全試行が合格した
+
+### レビュー指摘の反映後の計測
+
+PR #31 の2観点のレビュー（規約と意図）の指摘で、`ains`・`ains-ship`・`ains-grilling` の文言を整理し（72c5c45）、アダプタを最終の形（`injected_skills` の記録、実行前の確認）にしてから測り直した。対照も5試行足した。
+
+| 記号 | run-id | 対象コミット | 範囲 |
+|---|---|---|---|
+| P | i25e-20261029 | 72c5c45 | router-does-not-edit、ship-without-push-permission、new-feature-stops-at-spec-gate、build-stops-when-spec-is-draft × 両製品 × N=5 |
+| 対照2 | ctrl2-92016a1 | 92016a1 | new-feature-stops-at-spec-gate × Codex × N=5 |
+
+- P は両製品の40試行がすべて合格し、error は0件だった
+- Codex の20試行は、どれもシェルで SKILL.md を読んでいて、`injected_skills` は空だった。注入だけでスキルを受け取った試行（O の1件）は再現していないので、アダプタの新しい判定が実機で働いたのは O の1件だけである
+- Codex の new-feature-stops-at-spec-gate は、#25 の変更の後が 12/15（L 4/5、N 3/5、P 5/5）、変更の前の対照が 6/9（対照 2/4、対照2 4/5）。変更の後の合格率は、変更の前より低くない
+- 最終の本文（72c5c45）で測っていないのは、ains-build・ains-review-gate を読む build-stops の2ケース、bugfix、merge-request、review-gate-requester である。72c5c45 はこれらのスキルの本文を変えていないので、O の値（すべて 5/5）を使う
