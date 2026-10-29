@@ -2,6 +2,13 @@
 
 版の付け方は [README のバージョン](README.md#バージョン)を参照。この節以降はリリース時に semantic-release が更新する。
 
+## [0.3.2](https://github.com/53able/ai-dev-workflow-skills/compare/v0.3.1...v0.3.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* eval の被験実行と採点がホストや実アカウントに届かないよう隔離する ([b584598](https://github.com/53able/ai-dev-workflow-skills/commit/b58459855a77fc9db68f9e5c3085c74adf6a728d)), closes [#28](https://github.com/53able/ai-dev-workflow-skills/issues/28)
+
 ## [0.3.1](https://github.com/53able/ai-dev-workflow-skills/compare/v0.3.0...v0.3.1) (2026-10-29)
 
 
