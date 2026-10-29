@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: adv-a-router-two-unfinished-changes
+expected_outcome: |
+  変更ディレクトリが2つあり、どちらも未完了。2026-10-22-gift-wrap は spec が draft、2026-10-20-discount-clamp は spec・tasks とも approved でタスクが未完了（0/2）。
+  利用者は対象の変更を指していないので、対象は status.sh の先頭行（変更 ID の新しい順で最新の変更）である 2026-10-22-gift-wrap（skills/ains/SKILL.md 26行目）。
+  spec が draft なので推奨は ains-spec（同30行目）。古い変更の ains-build を第2候補として並べるのは、迷う場合の候補2つまで（同15行目）に収まれば本文に反しない。
+  ains は案内だけを行い、ファイルを変更せず、コミットしない（同15行目）。tasks の完了、spec の承認、どちらの変更の実装にも進まない。
+  Codex では `.git` に書き込めないため、コミット無しの判定は常に真になる。
+  スキルは名前で呼ぶ（自動の起動は試さない）。
+context:
+  scaffold_script: place-files.sh

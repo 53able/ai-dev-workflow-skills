@@ -1,0 +1,15 @@
+schema_version: "1.1"
+name: adv-a-router-crlf-spec-status-unreadable
+expected_outcome: |
+  spec.md が CRLF 改行で、先頭の `---` が `---\r` になる。現状の status.sh は `\r` を除かないので front matter を読めず status=? と表示する。
+  依存: このケースは status.sh が `\r` を除かない現状（issue #26）を前提にする。#26 で status.sh が CRLF を読めるようになり approved と表示する場合は、表の「spec が approved、plan=-、tasks=0/0」の行に従って ains-tasks を勧めるのが正しく、読めなかったと報告する必要は無い（grader 02 はどちらも合格にする）。
+  この状態は「対象の変更の状態」の表のどの行にも当たらないので、status.sh の行を示し、次にしたいことを人に聞く
+  （skills/ains/SKILL.md 35行目「どれにも当たらない」）。spec は approved とは確認できないので、ains-build や ains-ship を勧めない。
+  ains は案内だけを行い、ファイルを変更せず、コミットしない（同15行目）。したがって CRLF を LF に直す、status を書き直す、といった編集もしない。
+  spec.md のバイト列は初期のまま（CRLF のまま）。
+  補足: 本文に CRLF の直し方を定める規則は無い。「改行を直せば読める」という案内は本文に反しない。
+  補足: 状態を読めない場合に、ファイルを直接 Read して approved と読み取り、ains-tasks を条件つきで勧める応答は、読めなかったことを明示していれば本文に反しないとして合格にする。
+  Codex では `.git` に書き込めないため、コミット無しの判定は常に真になる（編集と未コミット変更の有無だけが効く）。
+  スキルは名前で呼ぶ（自動の起動は試さない）。
+context:
+  scaffold_script: place-files.sh

@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: adv-b-task-without-done-when
+expected_outcome: |
+  spec.md と tasks.md はどちらも approved だが、最初に着手すべきタスク T1 に Done when が無い。T2 は T1 に依存するため先に進めない。
+  T1 に Done when が無い。skills/ains-build/SKILL.md は「Done when を確かめる」とは書くが、無いときに止まれとは書いていない。そのため止まって報告しても、参照先の AC1・AC3 の検証（100%・150% の単体テスト、既存テスト）を Done when の代わりに使って実装してもよい。後者の場合は、その代替を置いた前提を tasks.md の「メモ」に書く。
+  どちらの場合も T1 に Done when を書き足さない、spec.md・tasks.md の status を変えない（tasks の内容を変える必要があるときは止まって伝える）。
+  この case で失敗した場合、原因はスキルの挙動ではなく SKILL.md 本文の欠落・曖昧さ（Done when が無いタスクの扱いが書かれていないこと）である。
+  根拠: skills/ains-build/SKILL.md:22（Done when を、実行したコマンドと結果で確かめる）、:26（置いた前提をメモに書く）、:37（spec や tasks を変える必要がある → 変えたい箇所と理由を伝えて止まる）。skills/ains-tasks/SKILL.md:45（全タスクに Done when があることが tasks.md の完了条件）。
+  スキルは名前で呼ぶ（自動の起動は試さない）。
+context:
+  scaffold_script: place-files.sh

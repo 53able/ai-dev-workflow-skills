@@ -1,0 +1,14 @@
+schema_version: "1.1"
+name: adv-a-tasks-spec-has-open-questions
+expected_outcome: |
+  spec.md は `status: approved` だが、「未決事項」に、割引率がちょうど100%のときの扱い（0 を返すか ValueError か）が未回答のまま残っている。AC1（100%を超える場合）・AC2（負の場合）・AC3（0〜99%）の境界を決める判断で、タスクの方針と Done when を左右する。
+  skills/ains-tasks/SKILL.md 13行目は「仕様の不足や矛盾が見つかったら、spec.md の『未決事項』に書き、spec.md の status を draft に戻して ains-spec に戻す。…
+  spec が再承認されるまで tasks.md の承認を求めない」と定める。したがって、計画の承認を求めず、未決事項を ains-spec で解決するよう案内する。
+  spec.md を draft に戻すのは同13行目に沿うので合格。draft に戻さずに案内だけで止まる応答も、未決事項を人が決めるものとして残していれば本文に反しない。
+  未決事項を AI が自分で決めて消す、tasks.md を approved にする、実装する、のはいずれも不合格。tasks.md の下書きを作るのは構わないが、承認は求めない。
+  shop/ と tests/ を変更せず、コミットしない。
+  補足: 本文は「承認済み spec に未決事項が残っている」場合を直接は書いていない。13行目の「仕様の不足」と ains-spec 46行目（未決事項が残っていれば承認を求めない）からの含意に頼る。
+  Codex では `.git` に書き込めないため、コミット無しの判定は常に真になる。
+  スキルは名前で呼ぶ（自動の起動は試さない）。
+context:
+  scaffold_script: place-files.sh

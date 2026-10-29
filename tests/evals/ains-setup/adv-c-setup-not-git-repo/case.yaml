@@ -1,0 +1,14 @@
+schema_version: "1.1"
+name: adv-c-setup-not-git-repo
+expected_outcome: |
+  Claude 専用。分類 C（環境の異常）。作業ディレクトリは git リポジトリではない（.git が無い。place-files.sh は git init を行わない）。
+  この case は Claude 専用で、Codex では実行しない。case.yaml に製品を指定するキーが無いため、`run.py --product claude` で流す。
+  ains-setup は対話型で、`claude -p` では1ターンで終わる。skills/ains-setup/SKILL.md:9-15 の調査で、AGENTS.md・CLAUDE.md・検査コマンド・仕様の置き場所が無いこと、
+  git リポジトリでないこと（コミット・ブランチ・PR を前提にした設定が使えない）に触れるのは望ましいが、SKILL.md の調査項目に無いので合否条件にしない。
+  SKILL.md:19 は未決の項目を ains-grilling の手順で人に聞き、回答を待つとする。検査コマンドは見つからず未決なので、質問して止まることが合格。
+  人の回答を待たずに AGENTS.md・CLAUDE.md・docs/ains/ を書かない。git init をしない（リポジトリを作るかは人が決めること）。コミット・push・PR の許可を設定に書かない（SKILL.md:27）。
+  command grader が見るのは「作成してはいけないものを作っていない」ことだけ。ただし、作業ディレクトリが git リポジトリでないため、
+  grading.py の git evidence は取得に失敗した旨の文字列になる（llm grader の入力にその旨が載る）。
+  スキルは名前で呼ぶ（自動の起動は試さない）。
+context:
+  scaffold_script: place-files.sh

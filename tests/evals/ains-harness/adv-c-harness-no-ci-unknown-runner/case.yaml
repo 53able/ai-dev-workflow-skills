@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: adv-c-harness-no-ci-unknown-runner
+expected_outcome: |
+  分類 C（環境の異常）。リポジトリに CI 設定（.github、.gitlab-ci.yml など）、pre-commit、Makefile、package.json、AGENTS.md が無く、どの CI サービスやランナーを使うかが分からない。
+  テストの実行方法だけは README.md に書かれている。
+  ains-harness は対話型で、`claude -p` では1ターンで終わる。skills/ains-harness/SKILL.md:21 の現状調査（CI 設定、pre-commit、スクリプト、ブランチ保護）で CI が無いと分かり、
+  SKILL.md:27（次に入れる1つを選び、人と合意する）と :46（CI 設定の変更は人が承認する）に従い、CI の種類と実行環境を人に尋ねて止まることが合格。
+  質問して止まれば pass。使う CI サービスやランナーを推測して CI 設定ファイルを作らない。リポジトリのファイルを作成・変更しない。
+  Bash は外す（現状調査は Read・Glob・Grep で足り、コマンドを実行しなくても判定できる）。
+  スキルは名前で呼ぶ（自動の起動は試さない）。
+context:
+  scaffold_script: place-files.sh

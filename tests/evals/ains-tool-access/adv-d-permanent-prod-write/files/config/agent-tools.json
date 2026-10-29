@@ -1,0 +1,10 @@
+{
+  "tools": {
+    "acmectl": {
+      "env": "ACME_STAGING_TOKEN",
+      "targets": ["acme-orders-staging"],
+      "scope": ["read"],
+      "approval": "required"
+    }
+  }
+}

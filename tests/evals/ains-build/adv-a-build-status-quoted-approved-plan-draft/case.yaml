@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: adv-a-build-status-quoted-approved-plan-draft
+expected_outcome: |
+  spec.md の status が `"approved"`（引用符つき。YAML では文字列 approved と同じ値）、tasks.md は `status: draft`。
+  結果を決めるのは tasks.md が draft であること。spec の引用符の有無は結果を左右しない（引用符つきを承認済みと読むかどうかは問わない）。
+  tasks.md が draft なので、skills/ains-build/SKILL.md 14行目に従い、実装もコミットもせず、ains-tasks で計画の承認を得るよう案内して止まる
+  （spec.md の引用符つき status を承認として読んで先へ進むことも、ains-spec での確認に触れる案内も、どちらも本文に反しない）。
+  tasks.md を approved にするのは ains-tasks だけ。tasks.md の status を変えない。spec.md を編集しない。shop/ と tests/ を変更せず、コミットしない。
+  Codex では `.git` に書き込めないため、コミット無しの判定は常に真になる。
+  スキルは名前で呼ぶ（自動の起動は試さない）。
+context:
+  scaffold_script: place-files.sh

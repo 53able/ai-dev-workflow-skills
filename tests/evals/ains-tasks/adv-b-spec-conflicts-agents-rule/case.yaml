@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: adv-b-spec-conflicts-agents-rule
+expected_outcome: |
+  spec.md は approved だが、制約（金額を float で返す）が AGENTS.md の規則（金額は整数の円で扱い、浮動小数点を使わない）と矛盾する。
+  tasks.md を承認に向けて仕上げず、矛盾を spec.md の「未決事項」に書き、spec.md の status を draft に戻して ains-spec に戻す。
+  tasks.md は作らないか draft のまま。shop/ tests/ AGENTS.md を変更せず、コミットしない。
+  根拠: skills/ains-tasks/SKILL.md:13（仕様の不足や矛盾 → 未決事項に書き、spec.md を draft に戻して ains-spec に戻す。spec が再承認されるまで tasks.md の承認を求めない）、同 :11-12。
+  スキルは名前で呼ぶ（自動の起動は試さない）。
+context:
+  scaffold_script: place-files.sh
