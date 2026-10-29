@@ -14,7 +14,7 @@ BASH_BIN="${BASH_BIN:-bash}"
 export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
 unset GIT_CONFIG_COUNT GIT_DIR GIT_WORK_TREE
 
-work=$(mktemp -d)
+work=$(mktemp -d "${TMPDIR:-/tmp}/rr-test.XXXXXX")
 trap 'chmod -R u+rwx "$work" 2>/dev/null; rm -rf "$work"' EXIT
 pass=0; fail=0
 
@@ -185,8 +185,14 @@ check L 3
 # 一時ディレクトリは TMPDIR の下に作る（無ければ判定できず 3）
 new_repo; echo "x" >src/auth/new.ts; mkdir -p "$work/tmpdir"
 RUN_ENV="TMPDIR=$work/tmpdir"; check M1 10 path
+if [[ -z "$(ls -A "$work/tmpdir")" ]]; then echo "PASS M1-cleanup"; pass=$((pass+1)); else echo "FAIL M1-cleanup (TMPDIR に残った)"; fail=$((fail+1)); fi
 new_repo; echo "x" >src/auth/new.ts
 RUN_ENV="TMPDIR=$work/no-such-dir"; check M2 3
+# 作業ツリーの中の TMPDIR は使わない（一時ファイルが未追跡ファイルとして判定に混ざるため）
+new_repo; mkdir .tmp-in
+RUN_ENV="TMPDIR=$PWD/.tmp-in"; check M3 3
+new_repo; mkdir .tmp-in
+RUN_ENV="TMPDIR=.tmp-in"; check M4 3
 
 new_repo; echo "isAdmin();" >>src/lib/util.ts; g add -A; git show HEAD:src/lib/util.ts >src/lib/util.ts
 check S1 10 content

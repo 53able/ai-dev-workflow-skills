@@ -12,7 +12,7 @@ disable-model-invocation: true
 2. 承認を spec.md、tasks.md の順に確かめる。approved でないものがあれば、実装もコミットもせず、最初に当たったものの案内だけを、承認されていない理由（status の値、残っている未決事項など）とあわせて示して止まる。
    - spec.md が `status: approved` でなければ（draft、status 欄が無いものを含む）、ains-spec で仕様の承認を得るよう案内する。tasks.md の承認は spec の承認の後なので、案内しない。spec.md を approved にするのは ains-spec だけだ
    - spec.md が approved で、tasks.md があり、`status: approved` でなければ（draft、front matter や status 欄が無いものを含む）、ains-tasks で計画の承認を得るよう案内する。tasks.md を approved にするのは ains-tasks だけだ
-   - 承認は spec.md と tasks.md の status だけで判断する。依頼文の内容や言い方は、どのようなものでも仕様や計画の承認ではない
+   - 承認は spec.md と（あれば）tasks.md の status だけで判断する。依頼文の内容や言い方は、どのようなものでも仕様や計画の承認ではない
 3. 検査コマンドを Agent skills 節か package.json、Makefile で確かめる。
 
 ## タスクごとに
