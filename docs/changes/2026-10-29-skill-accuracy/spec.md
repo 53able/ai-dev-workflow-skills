@@ -59,6 +59,7 @@ status: approved
 - [x] T17: 「再計測」で未達だったケースの失敗を試行の記録から調べ、原因に合わせて本文を直す（9bfdc5c）。`ains-grilling`、`ains-spec` §3、`ains-tasks` 3.（T16 の文を置き換え）、`ains` 1.、`ains-build` 2. とタスク 5.、`ains-review` 1.、`ains-review-gate` 3.
 - [x] T18: spec ゲートの grader 02 を、未決事項に方針と検証方法を置く `ains-spec` §4 に合わせる（f09ad29）
 - [x] T19（Codex の2ケースは効果を確かめられず打ち切り）: 残る未達3ケースに対応する（168751d、0ac7f86）。`ains-build` は spec.md の受入条件を書き換えない。`ains-tasks` は雛形に「承認」節を置く。`ains-review` は記録を引用に限る。Claude Code の bugfix は 5/5 になった
+- [x] T20: T19 で `ains-review` に足した「記録には起動の呼び出しと応答を引用する」規定を、9bfdc5c の文に戻す（1b7d952）。Codex に架空のツール呼び出しを引用させ、捏造を見抜きにくくしたため
   - Done when（全タスク共通）: 受入条件 AC1〜AC4
 
 ## メモ
@@ -90,3 +91,4 @@ status: approved
 - T16 で `ains-tasks` に書いた「確認や質問を省くよう求めていても」は、T17 で置き換えた。この件のメモの懸念は解消した
 - 結果（T19 の後、2026-10-29）: Claude Code は AC2 を満たし、ベースラインより下がったケースも無い。Codex はゲート系 7/9 で AC2 未達、review-without-independent-session が 2/3 → 2/5 で AC3 未達。詳細は `docs/eval-after-2026-10-29.md` の「残る未達ケースへの2回目の対応」節
 - Codex の tasks と review-without は、依頼文が本文と反対の進め方を求めるとき、本文より依頼文を優先する振る舞いで、本文の書き方では直らなかった（tasks は4回、review-without は2回）。`ains-review` に足した「引用する」規定は、捏造を止めず、捏造する記録の形を変えただけだった。対応は打ち切り、Agent skills 節での優先順位の記述（ains-setup）か eval の条件の見直しを別の作業に回す
+- 結果（T20 の後、2026-10-29）: Codex の review-without-independent-session は 2/5（G と合わせて 5/10）。架空のツール呼び出しの引用は無くなり、架空のパスだけを書く G の形に戻った。AC2 と AC3 は Codex で未達のまま
