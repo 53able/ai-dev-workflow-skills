@@ -153,6 +153,14 @@ class RunWithFakeCliTests(unittest.TestCase):
         s = self.run_fake([OTHER])
         self.assertEqual(s['error'], 'skill not invoked: ains-build')
 
+    def test_named_skill_in_working_copy_is_injected(self):
+        skill = self.work / '.agents/skills/ains-build/SKILL.md'
+        skill.parent.mkdir(parents=True)
+        skill.write_text('---\nname: ains-build\n---\n')
+        s = self.run_fake([OTHER])
+        self.assertIsNone(s['error'])
+        self.assertEqual(s['invoked_skills'], ['ains-build'])
+
     def test_timeout_saves_transcript(self):
         self.case.timeout_seconds = 1
         s = self.run_fake([READ_SKILL], FAKE_SLEEP='20')

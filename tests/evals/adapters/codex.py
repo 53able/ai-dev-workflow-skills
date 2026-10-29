@@ -173,6 +173,12 @@ def run(case: Case, workdir: Path, out_dir: Path) -> Summary:
     elif p.returncode != 0:
         s['error'] = f'codex exited with {p.returncode}: {errtxt.strip()[-500:]}'
     else:
+        # `$<name>` makes Codex inject that skill's SKILL.md without a shell read (measured with a
+        # canary skill, codex-cli 0.164.0). Under the empty CODEX_HOME the only copy is the working
+        # copy's, so a named skill installed there counts as invoked, as `/name` does in claude.
+        for n in reversed(named_skills(s['prompt_sent'])):
+            if n not in s['invoked_skills'] and (Path(workdir) / '.agents/skills' / n / 'SKILL.md').is_file():
+                s['invoked_skills'].insert(0, n)
         missing = [n for n in named_skills(s['prompt_sent']) if n not in s['invoked_skills']]
         if missing:
             s['error'] = f'skill not invoked: {", ".join(missing)}'
