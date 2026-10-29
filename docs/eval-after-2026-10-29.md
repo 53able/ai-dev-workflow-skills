@@ -325,3 +325,5 @@ PR #31 の2観点のレビュー（規約と意図）の指摘で、`ains`・`ai
 - Codex の20試行は、どれもシェルで SKILL.md を読んでいて、`injected_skills` は空だった。注入だけでスキルを受け取った試行（O の1件）は再現していないので、アダプタの新しい判定が実機で働いたのは O の1件だけである
 - Codex の new-feature-stops-at-spec-gate は、#25 の変更の後が 12/15（L 4/5、N 3/5、P 5/5）、変更の前の対照が 6/9（対照 2/4、対照2 4/5）。変更の後の合格率は、変更の前より低くない
 - 最終の本文（72c5c45）で測っていないのは、ains-build・ains-review-gate を読む build-stops の2ケース、bugfix、merge-request、review-gate-requester である。72c5c45 はこれらのスキルの本文を変えていないので、O の値（すべて 5/5）を使う
+- 72c5c45 は ains-grilling の参照の形も変えた。O の記録で ains-grilling を読んだのは Codex の ship だけで、ship と new-feature は P で測った
+- P の summary.md には対象コミットの欄が無い。P は 72c5c45 をコミットした直後に、同じ作業コピーで実行した
