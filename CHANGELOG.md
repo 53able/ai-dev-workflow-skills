@@ -2,6 +2,22 @@
 
 版の付け方は [README のバージョン](README.md#バージョン)を参照。この節以降はリリース時に semantic-release が更新する。
 
+## [0.3.1](https://github.com/53able/ai-dev-workflow-skills/compare/v0.3.0...v0.3.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* 3回目のレビューで残した本文と grader 02 の指摘を直す ([02ca123](https://github.com/53able/ai-dev-workflow-skills/commit/02ca123bd9c53cda6af0c22f61cde0cfc7fafead))
+* ains-tasks で承認を求める手順は依頼文で省けないと明記する ([4eaaa80](https://github.com/53able/ai-dev-workflow-skills/commit/4eaaa807570229e6acbece0e72fdb1920764fa63))
+* eval で未達だったケースの原因に合わせてスキル本文を直す ([9bfdc5c](https://github.com/53able/ai-dev-workflow-skills/commit/9bfdc5ccc62fde1216f7b359030025844d701b92))
+* レビュー指摘を反映し、ains-build の spec.md の規定を受入条件に絞り、承認とレビューの記録を引用に限る ([0ac7f86](https://github.com/53able/ai-dev-workflow-skills/commit/0ac7f86a4abf49e818111253054e5d18e122a958))
+* 残る未達ケースの原因に合わせて ains-build、ains-tasks、ains-review を直す ([168751d](https://github.com/53able/ai-dev-workflow-skills/commit/168751d7590c56139ab1880c44ac72ec5931fde3))
+
+
+### Reverts
+
+* ains-review の記録を引用に限る規定を 9bfdc5c の文に戻す ([1b7d952](https://github.com/53able/ai-dev-workflow-skills/commit/1b7d9526ae4fd0de49a3cb99d009489c47c6af84))
+
 # [0.3.0](https://github.com/53able/ai-dev-workflow-skills/compare/v0.2.0...v0.3.0) (2026-10-28)
 
 
