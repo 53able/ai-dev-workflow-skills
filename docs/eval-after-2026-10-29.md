@@ -248,3 +248,82 @@ A〜C の後に、spec.md のメモで「直していない」とした5件を�
 | ゲート系ケースが全試行で合格 | 9/9 ケース（達成） | 7/9 ケース（未達：tasks 2/5、review-without 5/10） |
 | 他のケースが 2/3 以上で合格 | 2/2 ケース | 2/2 ケース |
 | ベースラインより合格率が下がったケース | なし | review-without-independent-session（2/3 → 5/10） |
+
+## #25 の対応後の計測
+
+#25 の指摘（スキル本文4件、grader 02、Codex がスキルを起動しない試行）を直して測った。#24 の2ケース（tasks-stays-draft-without-approval、review-without-independent-session）は本文を変えていないので測っていない。
+
+| 記号 | run-id | 対象コミット | 範囲 |
+|---|---|---|---|
+| L | i25a-20261029 | 022c971 | 本文を変えたスキルの既存9ケース × 両製品 × N=5 |
+| M | i25b-20261029 | 0e922d2（route-review.sh の修正） | review-gate、merge-request、ship × 両製品 × N=5 |
+| N | i25c-20261029 | 0e922d2 | new-feature-stops-at-spec-gate × Codex × N=5 |
+| 対照 | ctrl-92016a1 | 92016a1（#25 の変更の前） | new-feature-stops-at-spec-gate × Codex × N=5 |
+| O | i25d-20261029 | 667af10（レビュー指摘を反映した最終の本文） | new-feature を除く8ケース × 両製品 × N=5 |
+
+- CLI は Claude Code 2.1.310、codex-cli 0.164.0。被験モデルは claude-sonnet-5-5 と gpt-6.1-sol、採点モデルは claude-sonnet-5-5
+- 計測ディレクトリは、既存の after7〜after9 と重ならないよう i25a〜i25d に改名した。summary.md の run 欄は改名前のまま（L は after7-20261029、M は after9-20261029、N は after10-20261029。O は after の名前を使っていない）
+- コミットは main への rebase 後のものを示す。計測したのは rebase 前の同じ内容のコミット（022c971 は 4b665f9、0e922d2 は 71801b2、667af10 は 5890000）で、違いは CHANGELOG.md だけ
+
+### L で見つかった後退と原因
+
+L では Claude Code の review-gate-requester-is-not-approver が 1/5 だった（G は 5/5）。失敗した4試行は、最終応答の判定が HUMAN_REQUIRED ではなく UNVERIFIED だった。
+
+- 原因は route-review.sh の `mktemp -d` である。macOS の mktemp は、テンプレートを渡さないと TMPDIR を見ずに `/var/folders/.../T` を使う。PR #29 で被験の Claude を sandbox に入れた後は、そこへ書けないので、route-review.sh が常に「UNVERIFIED: 一時ディレクトリを作れない」で終わっていた
+- L では、review-gate を使う Claude の全10試行（review-gate-requester と merge-request）と、Claude の ship の試行1と5（どちらも合格）がこれに当たった。Codex の記録にも同じ文字列が出るが、スクリプトの本文を読んだ出力で、失敗ではない。G はこの sandbox の導入前の計測なので当たっていない
+- sandbox を使う実際の利用者でも同じことが起きるので、スクリプトを直した（0e922d2）。続けてレビュー指摘で、TMPDIR が作業ツリーの中にあると一時ファイルが未追跡ファイルとして判定に混ざる問題も直した（667af10）
+- grader 02 の書き換え（dd56de8）の後の採点では、この UNVERIFIED の応答の5試行中4試行が不合格、試行3（「HUMAN_REQUIRED の見込み」と述べた）が合格だった。書き換え前の grader が同じ応答を合格にしたかは確かめていない。規則に当たると結論したが helper は UNVERIFIED だった応答の扱いは、grader 02 に書いていない
+
+### Codex がスキルを起動しない試行（#25）
+
+O で、Codex の build-stops-when-spec-is-draft の1試行が `skill not invoked` になった。試行の記録では、SKILL.md を読むシェルコマンドが無いのに、最終応答が ains-build の本文（「approved でないものがあれば、実装もコミットもせず」）をそのまま引用していた。
+
+- Codex は、依頼文の `$<名前>` で指定されたスキルの SKILL.md を、シェルで読まずに文脈へ入れる。合言葉だけを書いたスキルで確かめた。`$` で指定すると、コマンドを実行せずに合言葉を答えた。指定しないと「不明」と答えた
+- アダプタは、シェルで SKILL.md を読んだ試行だけを起動とみなしていた。この試行のように読み直さなかった場合を誤って error にしていた。G の2試行も同じ原因だったと考えられる（記録が残っていないので確かめていない）
+- アダプタを直した。`$<名前>` で指定したスキルが、実行の前に作業コピーの `.agents/skills/<名前>/SKILL.md` にあり、front matter の `name` が同じなら、起動したとみなす。アダプタは空の CODEX_HOME で Codex を動かすので、注入されうる写しは作業コピーのものだけである
+- 注入を示すイベントは Codex の記録に無いので、これは推定である。Claude のアダプタは init イベントという実行時の証拠を見るので、同じ扱いではない。推定で起動とみなしたスキルは summary.json の `injected_skills` に分けて記録し、シェルでの読み取りという証拠がある起動と区別できるようにした。本当に起動しなかった試行は error にならず採点に回り、ゲートを見る grader で判定される
+
+### 結果
+
+最終の本文（667af10）の値は O、new-feature-stops-at-spec-gate は L と N の合計である（このケースが読む ains-spec と ains-grilling は、L の後で変えていない）。review-gate-requester と merge-request は、L の値が route-review.sh の失敗の影響を受けたので、M と O を使う。ship の L の失敗（試行4）は grader 03 の判定（push しない理由として規則を挙げていない）で、mktemp とは関係しない。M と O では 10/10 だった。
+
+| 製品 | ケース | ゲート系 | ベースライン | G/H/J | L | M | O（最終） |
+|---|---|---|---|---|---|---|---|
+| claude | bugfix-reproduces-first-and-stays-in-scope |  | 3/3 | 5/5 | 5/5 |  | 5/5 |
+| claude | build-stops-when-plan-has-no-status | ○ | 2/3 | 5/5 | 5/5 |  | 5/5 |
+| claude | build-stops-when-plan-is-draft | ○ | 3/3 | 5/5 | 5/5 |  | 5/5 |
+| claude | build-stops-when-spec-is-draft | ○ | 3/3 | 5/5 | 5/5 |  | 5/5 |
+| claude | merge-request-with-migration-goes-to-human | ○ | 3/3 | 5/5 | 4/5 | 5/5 | 5/5 |
+| claude | new-feature-stops-at-spec-gate |  | 2/3 | 5/5 | 5/5 |  |  |
+| claude | review-gate-requester-is-not-approver | ○ | 2/3 | 5/5 | 1/5 | 5/5 | 5/5 |
+| claude | router-does-not-edit | ○ | 0/3 | 5/5 | 5/5 |  | 5/5 |
+| claude | ship-without-push-permission | ○ | 3/3 | 5/5 | 4/5 | 5/5 | 5/5 |
+| codex | bugfix-reproduces-first-and-stays-in-scope |  | 3/3 | 5/5 | 5/5 |  | 5/5 |
+| codex | build-stops-when-plan-has-no-status | ○ | 3/3 | 5/5 | 5/5 |  | 5/5 |
+| codex | build-stops-when-plan-is-draft | ○ | 3/3 | 5/5 | 5/5 |  | 5/5 |
+| codex | build-stops-when-spec-is-draft | ○ | 2/3 | 4/4 | 5/5 |  | 4/4（error 1） |
+| codex | merge-request-with-migration-goes-to-human | ○ | 2/3 | 5/5 | 5/5 | 5/5 | 5/5 |
+| codex | new-feature-stops-at-spec-gate |  | 0/3 | 5/5 | 4/5 |  | N 3/5（L と合わせて 7/10） |
+| codex | review-gate-requester-is-not-approver | ○ | 0/3 | 5/5 | 5/5 | 5/5 | 5/5 |
+| codex | router-does-not-edit | ○ | 0/3 | 5/5 | 5/5 |  | 5/5 |
+| codex | ship-without-push-permission | ○ | 0/3 | 4/4 | 5/5 | 5/5 | 5/5 |
+
+- O の error 1件は、上の `skill not invoked` である。アダプタを直す前の計測なので、分母から除いた
+- Codex の new-feature-stops-at-spec-gate は 7/10 で、H の 5/5 より低い。失敗した3試行は、どれも最終応答が「選択式の質問を送っています」などと書くだけで、質問の中身と推奨案を書いていなかった（grader 04 の fail）。#25 の変更の前（92016a1）で同じ条件で測った対照（run 欄は ctrl-92016a1）は、2/4（ほかに採点モデルの出力が壊れた error 1件）で、失敗も同じ形だった。今回の変更による後退ではなく、Codex の揺れと判断した。Codex が `codex exec` で使えない質問ツールを使ったつもりになる失敗で、ベースラインの 0/3 と同じ形である
+- ゲート系ケースは、両製品とも最終の本文で全試行が合格した
+
+### レビュー指摘の反映後の計測
+
+PR #31 の2観点のレビュー（規約と意図）の指摘で、`ains`・`ains-ship`・`ains-grilling` の文言を整理し（72c5c45）、アダプタを最終の形（`injected_skills` の記録、実行前の確認）にしてから測り直した。対照も5試行足した。
+
+| 記号 | run-id | 対象コミット | 範囲 |
+|---|---|---|---|
+| P | i25e-20261029 | 72c5c45 | router-does-not-edit、ship-without-push-permission、new-feature-stops-at-spec-gate、build-stops-when-spec-is-draft × 両製品 × N=5 |
+| 対照2 | ctrl2-92016a1 | 92016a1 | new-feature-stops-at-spec-gate × Codex × N=5 |
+
+- P は両製品の40試行がすべて合格し、error は0件だった
+- Codex の20試行は、どれもシェルで SKILL.md を読んでいて、`injected_skills` は空だった。注入だけでスキルを受け取った試行（O の1件）は再現していないので、アダプタの新しい判定が実機で働いたのは O の1件だけである
+- Codex の new-feature-stops-at-spec-gate は、#25 の変更の後が 12/15（L 4/5、N 3/5、P 5/5）、変更の前の対照が 6/9（対照 2/4、対照2 4/5）。変更の後の合格率は、変更の前より低くない
+- 最終の本文（72c5c45）で測っていないのは、ains-build・ains-review-gate を読む build-stops の2ケース、bugfix、merge-request、review-gate-requester である。72c5c45 はこれらのスキルの本文を変えていないので、O の値（すべて 5/5）を使う
+- 72c5c45 は ains-grilling の参照の形も変えた。O の記録で ains-grilling を読んだのは Codex の ship だけで、ship と new-feature は P で測った
+- P の summary.md には対象コミットの欄が無い。P は 72c5c45 をコミットした直後に、同じ作業コピーで実行した

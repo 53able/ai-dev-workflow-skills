@@ -202,7 +202,7 @@ class GradingTests(unittest.TestCase):
     def test_unsafe_git_config_stops_grading(self):
         marker = Path(self.tmp.name) / 'ran'
         for key, value in [('core.fsmonitor', f'touch {marker}'), ('diff.x.textconv', 'cat'),
-                           ('filter.x.clean', 'cat'), ('include.path', '/tmp/x'), ('protocol.ext.allow', 'always'),
+                           ('filter.x.clean', 'cat'), ('include.path', str(Path(self.tmp.name) / 'no-such-include')), ('protocol.ext.allow', 'always'),
                            ('gpg.program', f'touch {marker}'), ('log.showSignature', 'true'),
                            ('core.worktree', '/tmp'), ('submodule.x.update', '!sh')]:
             with self.subTest(key=key):

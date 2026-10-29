@@ -126,8 +126,12 @@ merge_base=$(git merge-base "$base" HEAD 2>/dev/null) || {
 }
 fi
 
-tmp=$(mktemp -d) || { echo "UNVERIFIED: 一時ディレクトリを作れない" >&2; exit 3; }
+# テンプレートを渡す。macOS の mktemp -d は、渡さないと TMPDIR を見ない（sandbox では書けない場所を選ぶ）
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/route-review.XXXXXX") || { echo "UNVERIFIED: 一時ディレクトリを作れない" >&2; exit 3; }
 trap 'rm -rf "$tmp"' EXIT
+# 作業ツリーの中に作ると、一時ファイルが未追跡ファイルとして判定に混ざる
+tmp_abs=$(cd "$tmp" && pwd -P) && top_abs=$(cd "$top" && pwd -P) || { echo "UNVERIFIED: 一時ディレクトリの場所を解決できない" >&2; exit 3; }
+case "$tmp_abs/" in "$top_abs"/*) echo "UNVERIFIED: 一時ディレクトリが作業ツリーの中にある（TMPDIR を作業ツリーの外にする）: $tmp_abs" >&2; exit 3 ;; esac
 
 # 規則は base の版を読む。変更の中で規則を消したり差し替えたりしても判定を外せないようにする。
 rules_missing=0

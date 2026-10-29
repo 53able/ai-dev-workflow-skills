@@ -1,6 +1,7 @@
 """codex adapter tests on saved JSONL samples; no model is called."""
 import json
 import os
+import shutil
 from pathlib import Path
 import tempfile
 import unittest
@@ -152,6 +153,32 @@ class RunWithFakeCliTests(unittest.TestCase):
     def test_skill_not_read_is_error(self):
         s = self.run_fake([OTHER])
         self.assertEqual(s['error'], 'skill not invoked: ains-build')
+
+    def install(self, front='name: ains-build'):
+        skill = self.work / '.agents/skills/ains-build/SKILL.md'
+        skill.parent.mkdir(parents=True)
+        skill.write_text(f'---\n{front}\n---\nbody\n')
+
+    def test_named_skill_in_working_copy_is_injected(self):
+        self.install()
+        s = self.run_fake([OTHER])
+        self.assertIsNone(s['error'])
+        self.assertEqual(s['invoked_skills'], ['ains-build'])
+        self.assertEqual(s['injected_skills'], ['ains-build'])
+
+    def test_read_skill_is_not_marked_injected(self):
+        self.install()
+        s = self.run_fake([READ_SKILL])
+        self.assertEqual(s['invoked_skills'], ['ains-build'])
+        self.assertEqual(s['injected_skills'], [])
+
+    def test_skill_with_other_or_no_name_is_not_injected(self):
+        for front in ['name: ains-other', 'description: x']:
+            with self.subTest(front=front):
+                shutil.rmtree(self.work / '.agents', ignore_errors=True)
+                self.install(front)
+                s = self.run_fake([OTHER])
+                self.assertEqual(s['error'], 'skill not invoked: ains-build')
 
     def test_timeout_saves_transcript(self):
         self.case.timeout_seconds = 1

@@ -54,6 +54,8 @@ class Summary(TypedDict):
     commands: list[str]
     edited_files: list[str]
     invoked_skills: list[str]
+    # Of invoked_skills, those counted without a read in the transcript (codex `$name` injection).
+    injected_skills: list[str]
     ignored_options: list[str]
     prompt_sent: str
     cli_version: str
@@ -68,7 +70,7 @@ SUMMARY_KEYS = tuple(Summary.__annotations__)
 
 
 def empty_summary() -> Summary:
-    return Summary(final_response='', commands=[], edited_files=[], invoked_skills=[],
+    return Summary(final_response='', commands=[], edited_files=[], invoked_skills=[], injected_skills=[],
                    ignored_options=[], prompt_sent='', cli_version='', model='', error=None,
                    timeline=[])
 
