@@ -8,7 +8,7 @@ import signal
 import subprocess
 import tempfile
 
-from evallib import GIT_ENV, Case, Summary, clip, empty_summary, kill_group, track
+from evallib import Case, Summary, clip, empty_summary, kill_group, subject_env, track
 
 SKILL_DIR = '.agents/skills/'
 DEFAULT_MODEL = 'gpt-6.1-sol'   # same fixed model as tests/runtime/codex/runtime.py
@@ -127,7 +127,7 @@ def isolated_env(home: Path) -> dict:
     real = Path(os.environ.get('CODEX_HOME') or Path.home() / '.codex') / 'auth.json'
     if real.exists():
         (codex_home / 'auth.json').symlink_to(real)
-    return {**os.environ, **GIT_ENV, 'HOME': str(home), 'CODEX_HOME': str(codex_home)}
+    return {**subject_env(login={'OPENAI_API_KEY', 'CODEX_API_KEY'}), 'HOME': str(home), 'CODEX_HOME': str(codex_home)}
 
 
 def run(case: Case, workdir: Path, out_dir: Path) -> Summary:
@@ -139,7 +139,7 @@ def run(case: Case, workdir: Path, out_dir: Path) -> Summary:
     s['cli_version'] = cli_version()
     model = os.environ.get(MODEL_ENV) or DEFAULT_MODEL
     args = ['codex', '-a', 'never', 'exec', '--ignore-user-config', '--ephemeral',
-            '-s', 'workspace-write', '-m', model, '--json', '-C', str(workdir), s['prompt_sent']]
+            '-s', 'workspace-write', '-c', 'sandbox_workspace_write.network_access=false', '-m', model, '--json', '-C', str(workdir), s['prompt_sent']]
     home = Path(tempfile.mkdtemp(prefix='ains-codex-home-'))
     try:
         p = subprocess.Popen(args, cwd=workdir, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,

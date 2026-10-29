@@ -125,6 +125,21 @@ class RunWithFakeCliTests(unittest.TestCase):
         self.run_fake([self.init(), {'type': 'result', 'subtype': 'success', 'result': 'done'}])
         self.assertEqual((self.dir / 'gitenv').read_text().split(), [os.devnull, '1'])
 
+    def test_subject_isolation(self):
+        (self.dir / 'bin' / 'claude').write_text(FAKE.replace('cat > /dev/null', 'cat > /dev/null\n'
+            'echo "$GIT_ALLOW_PROTOCOL|$GH_TOKEN|${SSH_AUTH_SOCK-unset}" > "$FAKE_DIR/subj"'))
+        self.run_fake([self.init(), {'type': 'result', 'subtype': 'success', 'result': 'done'}], SSH_AUTH_SOCK='/x')
+        self.assertEqual((self.dir / 'subj').read_text().strip(), 'file|ains-eval-invalid|unset')
+        args = (self.dir / 'args').read_text().splitlines()
+        settings = json.loads(args[args.index('--settings') + 1])
+        self.assertTrue(settings['sandbox']['enabled'])
+        self.assertTrue(settings['sandbox']['failIfUnavailable'])
+        self.assertFalse(settings['sandbox']['allowUnsandboxedCommands'])
+        self.assertEqual(settings['sandbox']['network']['allowedDomains'], [])
+        self.assertIn('~/', settings['sandbox']['filesystem']['denyRead'])
+        self.assertIn('Read(~/**)', settings['permissions']['deny'])
+        self.assertEqual(sorted(p.name for p in self.work.iterdir()), [])   # nothing written into the copy
+
     def test_agent_tool_provided_is_error(self):
         s = self.run_fake([self.init(tools=['Read', 'Skill', 'Bash', 'Agent']),
                            {'type': 'result', 'subtype': 'success', 'result': 'done'}])

@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import subprocess
 
-from evallib import GIT_ENV, Case, Summary, clip, empty_summary, kill_group, track
+from evallib import Case, Summary, clip, empty_summary, kill_group, subject_env, track
 
 SKILL_DIR = '.claude/skills/'
 # Pinned so pass rates stay comparable across runs; override with EVAL_CLAUDE_MODEL.
@@ -13,8 +13,26 @@ EDIT_TOOLS = {'Write': 'file_path', 'Edit': 'file_path', 'NotebookEdit': 'notebo
 # Keep user-level settings (~/.claude settings, hooks, plugins) and MCP servers out of the
 # run; stream-json carries the first one only when it is the 'project' source.
 ISOLATION_ARGS = ['--setting-sources', 'project', '--strict-mcp-config', '--permission-mode', 'dontAsk']
-# GIT_ENV: the agent's git ignores the user's global git config, as in scaffold and grading.
-ISOLATION_ENV = {'CLAUDE_CODE_DISABLE_AUTO_MEMORY': '1', **GIT_ENV}
+# subject_env(): the agent's git ignores the user's global git config, as in scaffold and
+# grading, and cannot reach real remotes, ssh or GitHub.
+ISOLATION_ENV = {'CLAUDE_CODE_DISABLE_AUTO_MEMORY': '1'}
+# HOME is the user's (the CLI needs its login), so Bash runs in Claude Code's sandbox: no
+# reads under ~, no network, and no start without the sandbox. Read/Edit deny rules cover the
+# file tools, which the sandbox does not confine. Passed with --settings, so nothing is
+# written into the working copy.
+SANDBOX_SETTINGS = {
+    'sandbox': {'enabled': True, 'failIfUnavailable': True, 'allowUnsandboxedCommands': False,
+                'filesystem': {'denyRead': ['~/']},
+                'network': {'allowedDomains': [], 'strictAllowlist': True}},
+    # The file tools: ~ in both the ~/ and the absolute //<home>/ form, and no writes to the
+    # project settings or git internals (a rewritten .claude/settings.json could loosen the
+    # sandbox; .git/config could make the grader's git run a program).
+    'permissions': {'deny': ['Read(~/**)', 'Edit(~/**)', f'Read(/{Path.home()}/**)', f'Edit(/{Path.home()}/**)',
+                             'Edit(/.claude/**)', 'Edit(/.git/**)', 'WebFetch', 'WebSearch',
+                             # The sandbox still lets `security` reach the login keychain (measured,
+                             # Claude Code 2.1.312). Prefix rules only slow this down; see the plan.
+                             'Bash(security *)', 'Bash(/usr/bin/security *)']},
+}
 
 
 def _rel(path: str, workdir: Path) -> str:
@@ -140,13 +158,13 @@ def run(case: Case, workdir: Path, out_dir: Path) -> Summary:
     out_dir.mkdir(parents=True, exist_ok=True)
     model = os.environ.get('EVAL_CLAUDE_MODEL') or DEFAULT_MODEL
     cmd = ['claude', '-p', '--output-format', 'stream-json', '--verbose', '--model', model,
-           '--max-turns', str(case.max_turns), *ISOLATION_ARGS]
+           '--max-turns', str(case.max_turns), *ISOLATION_ARGS, '--settings', json.dumps(SANDBOX_SETTINGS)]
     if case.allowed_tools:
         # --tools limits the tools provided (no Agent unless listed); --allowedTools only
         # pre-approves, which dontAsk needs.
         tools = ','.join(case.allowed_tools)
         cmd += ['--tools', tools, '--allowedTools', tools]
-    env = {**os.environ, **ISOLATION_ENV}
+    env = {**subject_env(login={'ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'}), **ISOLATION_ENV}
     error = None
     try:
         proc = subprocess.Popen(cmd, cwd=workdir, env=env, text=True, start_new_session=True,
