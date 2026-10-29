@@ -60,6 +60,23 @@ class StatusTests(unittest.TestCase):
         (d / 'tasks.md').write_text('---\nstatus approved\n---\nstatus: approved\n')
         self.assertIn('status=?  plan=draft', self.run_status())
 
+    def test_front_matter_needs_closing_line_and_ignores_cr(self):
+        for name, text, want in [('noclose', '---\nstatus: approved\n# body\n', '?'),
+                                 ('bodycr', '---\nstatus: approved\r\n---\n', 'approved'),
+                                 ('crlf', '---\r\nstatus: approved\r\n---\r\n', 'approved'),
+                                 ('trailws', '---\nstatus: approved  \n---\n', 'approved'),
+                                 ('noclose-hr', '---\nstatus: approved\n# body\n\ntext\n\n---\nmore\n', '?'),
+                                 ('nbsp', '---\nstatus: approved\u00a0\n---\n', 'approved\u00a0'),
+                                 ('yaml-forms', '---\n# c\nid: x\ntags:\n  - a\nlist:\n- b\nstatus:approved\n\n---\n', 'approved')]:
+            with self.subTest(name=name):
+                d = self.change(spec=None)
+                (d / 'spec.md').write_bytes(text.encode())
+                (d / 'tasks.md').write_bytes(text.encode())
+                plan = 'draft' if want == '?' else want
+                self.assertEqual(self.run_status(), f'2026-10-20-example  status={want}  plan={plan}  未決=0  tasks=0/0')
+                for p in d.iterdir(): p.unlink()
+                d.rmdir()
+
     def test_counts_questions_and_fallback_spec_tasks(self):
         self.change(body='## 未決事項\n- question\n  - another\n\n## タスク\n- [x] T1: done\n- [X] T2: done\n- [ ] T3: open\n- [ ] T4:   \n- [ ] AC1: not a task\n')
         self.assertEqual(self.run_status(), '2026-10-20-example  status=draft  plan=-  未決=2  tasks=2/3')

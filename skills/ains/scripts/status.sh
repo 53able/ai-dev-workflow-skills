@@ -11,8 +11,9 @@ root="${1:-docs/changes}"
 [[ -d "$root" ]] || { echo "変更ディレクトリがない: $root"; exit 0; }
 
 count() { local n; n=$(grep -cE "$1" "$2" 2>/dev/null) || true; echo "${n:-0}"; }
-# front matter は1行目が --- のファイルだけから読む
-fm_status() { awk 'NR==1 && /^---$/{fm=1; next} fm && /^---$/{exit} fm && /^status:/{sub(/^status:[[:space:]]*/,""); print; exit}' "$1"; }
+# front matter は1行目が --- で、閉じの --- があるファイルだけから読む。行末の CR と値の末尾の空白は除く。
+# 閉じるまでに「key:」、「- 」で始まる項目、字下げ、# のコメント、空行のどれでもない行があれば front matter とみなさない（閉じ忘れと本文の --- を区別する）
+fm_status() { awk '{sub(/\r$/,"")} NR==1 && /^---$/{fm=1; next} !fm{exit} /^---$/{print v; exit} !/^([^ \t#:-][^:]*:|-[ \t]|[ \t]|#|$)/{exit} !got && /^status:/{sub(/^status:[ \t]*/,""); sub(/[ \t]+$/,""); v=$0; got=1}' "$1"; }
 
 found=0
 while IFS= read -r d; do
