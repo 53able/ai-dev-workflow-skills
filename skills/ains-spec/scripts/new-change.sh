@@ -2,6 +2,7 @@
 # 変更ディレクトリを作り、spec.md の雛形を置く。既存の spec.md は上書きしない。
 #
 # usage: new-change.sh <slug> [--root <dir>]
+#   slug    小文字英数字とハイフン、244 文字まで（日付を付けたディレクトリ名が 255 バイトに収まる長さ）。1つだけ
 #   --root  作成先の親ディレクトリ（既定: docs/changes）
 # 出力: 作成したディレクトリのパス
 set -euo pipefail
@@ -9,20 +10,20 @@ set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tpl="$here/../assets/spec.md"
 
-slug="" root="docs/changes"
+slug="" nslug=0 root="docs/changes"
 while (( $# )); do
   case "$1" in
     --root)
       [[ $# -ge 2 && "$2" != -* ]] || { echo "--root には値が必要" >&2; exit 2; }
       root="$2"; shift ;;
     -*) echo "unknown option: $1" >&2; exit 2 ;;
-    *) slug="$1" ;;
+    *) slug="$1"; nslug=$((nslug + 1)) ;;
   esac
   shift
 done
 
-if [[ ! "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
-  echo "usage: new-change.sh <slug: 小文字英数字とハイフン> [--root <dir>]" >&2
+if (( nslug != 1 )) || [[ ! "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]] || (( ${#slug} > 244 )); then
+  echo "usage: new-change.sh <slug: 小文字英数字とハイフン、244 文字まで、1つ> [--root <dir>]" >&2
   exit 2
 fi
 

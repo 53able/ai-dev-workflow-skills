@@ -74,7 +74,7 @@ L1 生成型テスト（`run_l1.py`）が判定に使う契約と不変条件。
 
 **N-INV1**: どの入力でも、既存の spec.md と symlink の参照先の内容は変わらない。壊れた symlink の参照先を作らない（`tests/scripts/test_new_change.py` の `test_existing_spec_symlink_does_not_create_missing_target` と同じ性質）。
 
-**N-INV2**: slug の引数が1つで不正な場合は exit 2 で、何も作らない。slug を複数渡した場合（`new-change.sh:19` で最後の slug が採られる）と、正規表現は通るが mkdir に失敗する長さ（256 文字）の場合は unspecified。
+**N-INV2**: slug の引数が1つで不正な場合は exit 2 で、何も作らない。#27 で、slug を複数渡した場合と、244 文字を超える slug（日付を付けると 255 バイトを超える）も同じく exit 2 で何も作らないと決めた。
 
 ## route-review.sh（`skills/ains-review-gate/scripts/route-review.sh`）
 
