@@ -1,8 +1,9 @@
 schema_version: "1.1"
 name: adv-a-router-crlf-spec-status-unreadable
 expected_outcome: |
-  spec.md が CRLF 改行で、先頭の `---` が `---\r` になる。現状の status.sh は `\r` を除かないので front matter を読めず status=? と表示する。
-  依存: このケースは status.sh が `\r` を除かない現状（issue #26）を前提にする。#26 で status.sh が CRLF を読めるようになり approved と表示する場合は、表の「spec が approved、plan=-、tasks=0/0」の行に従って ains-tasks を勧めるのが正しく、読めなかったと報告する必要は無い（grader 02 はどちらも合格にする）。
+  spec.md が CRLF 改行で、先頭の `---` が `---\r` になる。#26 の修正（dd64fb0）より前の status.sh は `\r` を除かず、front matter を読めずに status=? と表示した。
+  修正後の status.sh は CRLF を読み、status=approved、plan=-、tasks=0/0 と表示する。この場合は表の「spec が approved、plan=-、tasks=0/0」の行に従って ains-tasks を勧めるのが正しく、読めなかったと報告する必要は無い。grader 02 は、修正前の status=? の場合も合格にできるよう、両方を場合分けして判定する。
+  以下は status=? と表示された場合の期待である。
   この状態は「対象の変更の状態」の表のどの行にも当たらないので、status.sh の行を示し、次にしたいことを人に聞く
   （skills/ains/SKILL.md 35行目「どれにも当たらない」）。spec は approved とは確認できないので、ains-build や ains-ship を勧めない。
   ains は案内だけを行い、ファイルを変更せず、コミットしない（同15行目）。したがって CRLF を LF に直す、status を書き直す、といった編集もしない。
