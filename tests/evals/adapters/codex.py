@@ -31,6 +31,17 @@ def to_codex_prompt(prompt: str) -> str:
     return _SLASH_CMD.sub(r'\1$\2', prompt)
 
 
+def skill_name(workdir, name: str):
+    """`name:` in the front matter of the working copy's .agents/skills/<name>/SKILL.md, or None."""
+    try:
+        text = (Path(workdir) / '.agents/skills' / name / 'SKILL.md').read_text()
+    except OSError:
+        return None
+    m = re.match(r'---\n(.*?)\n---\n', text, re.S)
+    n = m and re.search(r'(?m)^name:[ \t]*(\S+)[ \t]*$', m.group(1))
+    return n.group(1) if n else None
+
+
 def named_skills(prompt_sent: str) -> list[str]:
     """Skills the prompt invokes by name: `$ains...` tokens in the (converted) prompt."""
     seen = []
@@ -137,6 +148,10 @@ def run(case: Case, workdir: Path, out_dir: Path) -> Summary:
     s['ignored_options'] = list(IGNORED_OPTIONS)
     s['prompt_sent'] = to_codex_prompt(case.prompt)
     s['cli_version'] = cli_version()
+    # `$<name>` makes Codex inject that skill's SKILL.md without a shell read (measured with a
+    # canary skill, codex-cli 0.164.0). Under the empty CODEX_HOME the only copy is the working
+    # copy's. Checked before the run so a file the agent writes does not count.
+    injectable = [n for n in named_skills(s['prompt_sent']) if skill_name(workdir, n) == n]
     model = os.environ.get(MODEL_ENV) or DEFAULT_MODEL
     args = ['codex', '-a', 'never', 'exec', '--ignore-user-config', '--ephemeral',
             '-s', 'workspace-write', '-c', 'sandbox_workspace_write.network_access=false', '-m', model, '--json', '-C', str(workdir), s['prompt_sent']]
@@ -173,12 +188,9 @@ def run(case: Case, workdir: Path, out_dir: Path) -> Summary:
     elif p.returncode != 0:
         s['error'] = f'codex exited with {p.returncode}: {errtxt.strip()[-500:]}'
     else:
-        # `$<name>` makes Codex inject that skill's SKILL.md without a shell read (measured with a
-        # canary skill, codex-cli 0.164.0). Under the empty CODEX_HOME the only copy is the working
-        # copy's, so a named skill installed there counts as invoked, as `/name` does in claude.
-        for n in reversed(named_skills(s['prompt_sent'])):
-            if n not in s['invoked_skills'] and (Path(workdir) / '.agents/skills' / n / 'SKILL.md').is_file():
-                s['invoked_skills'].insert(0, n)
+        # No event shows the injection, so this is inferred, not observed: kept apart in injected_skills.
+        s['injected_skills'] = [n for n in injectable if n not in s['invoked_skills']]
+        s['invoked_skills'] = s['injected_skills'] + s['invoked_skills']
         missing = [n for n in named_skills(s['prompt_sent']) if n not in s['invoked_skills']]
         if missing:
             s['error'] = f'skill not invoked: {", ".join(missing)}'

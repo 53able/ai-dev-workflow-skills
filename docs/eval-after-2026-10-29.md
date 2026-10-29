@@ -255,23 +255,24 @@ A〜C の後に、spec.md のメモで「直していない」とした5件を�
 
 | 記号 | run-id | 対象コミット | 範囲 |
 |---|---|---|---|
-| L | i25a-20261029 | 4b665f9 | 本文を変えたスキルの既存9ケース × 両製品 × N=5 |
-| M | i25b-20261029 | 71801b2（route-review.sh の修正） | review-gate、merge-request、ship × 両製品 × N=5 |
-| N | i25c-20261029 | 71801b2 | new-feature-stops-at-spec-gate × Codex × N=5 |
+| L | i25a-20261029 | 022c971 | 本文を変えたスキルの既存9ケース × 両製品 × N=5 |
+| M | i25b-20261029 | 0e922d2（route-review.sh の修正） | review-gate、merge-request、ship × 両製品 × N=5 |
+| N | i25c-20261029 | 0e922d2 | new-feature-stops-at-spec-gate × Codex × N=5 |
 | 対照 | ctrl-92016a1 | 92016a1（#25 の変更の前） | new-feature-stops-at-spec-gate × Codex × N=5 |
-| O | i25d-20261029 | 5890000（レビュー指摘を反映した最終の本文） | new-feature を除く8ケース × 両製品 × N=5 |
+| O | i25d-20261029 | 667af10（レビュー指摘を反映した最終の本文） | new-feature を除く8ケース × 両製品 × N=5 |
 
 - CLI は Claude Code 2.1.310、codex-cli 0.164.0。被験モデルは claude-sonnet-5-5 と gpt-6.1-sol、採点モデルは claude-sonnet-5-5
-- 計測ディレクトリは、既存の after7〜after9 と重ならないよう i25a〜i25d に改名した。L の summary.md の run 欄は改名前の after7-20261029 のまま
+- 計測ディレクトリは、既存の after7〜after9 と重ならないよう i25a〜i25d に改名した。summary.md の run 欄は改名前のまま（L は after7-20261029、M は after9-20261029、N は after10-20261029。O は after の名前を使っていない）
+- コミットは main への rebase 後のものを示す。計測したのは rebase 前の同じ内容のコミット（022c971 は 4b665f9、0e922d2 は 71801b2、667af10 は 5890000）で、違いは CHANGELOG.md だけ
 
 ### L で見つかった後退と原因
 
 L では Claude Code の review-gate-requester-is-not-approver が 1/5 だった（G は 5/5）。失敗した4試行は、最終応答の判定が HUMAN_REQUIRED ではなく UNVERIFIED だった。
 
 - 原因は route-review.sh の `mktemp -d` である。macOS の mktemp は、テンプレートを渡さないと TMPDIR を見ずに `/var/folders/.../T` を使う。PR #29 で被験の Claude を sandbox に入れた後は、そこへ書けないので、route-review.sh が常に「UNVERIFIED: 一時ディレクトリを作れない」で終わっていた
-- L では、review-gate を使う Claude の全10試行（review-gate-requester と merge-request）と、Codex の ship の2試行がこれに当たった。G はこの sandbox の導入前の計測なので当たっていない
-- sandbox を使う実際の利用者でも同じことが起きるので、スクリプトを直した（71801b2）。続けてレビュー指摘で、TMPDIR が作業ツリーの中にあると一時ファイルが未追跡ファイルとして判定に混ざる問題も直した（5890000）
-- grader 02 の書き換え（96be5bc）は、この UNVERIFIED の応答を不合格にした。書き換え前の grader が同じ応答を合格にしたかは確かめていない
+- L では、review-gate を使う Claude の全10試行（review-gate-requester と merge-request）と、Claude の ship の試行1と5（どちらも合格）がこれに当たった。Codex の記録にも同じ文字列が出るが、スクリプトの本文を読んだ出力で、失敗ではない。G はこの sandbox の導入前の計測なので当たっていない
+- sandbox を使う実際の利用者でも同じことが起きるので、スクリプトを直した（0e922d2）。続けてレビュー指摘で、TMPDIR が作業ツリーの中にあると一時ファイルが未追跡ファイルとして判定に混ざる問題も直した（667af10）
+- grader 02 の書き換え（dd56de8）の後の採点では、この UNVERIFIED の応答の5試行中4試行が不合格、試行3（「HUMAN_REQUIRED の見込み」と述べた）が合格だった。書き換え前の grader が同じ応答を合格にしたかは確かめていない。規則に当たると結論したが helper は UNVERIFIED だった応答の扱いは、grader 02 に書いていない
 
 ### Codex がスキルを起動しない試行（#25）
 
@@ -279,11 +280,12 @@ O で、Codex の build-stops-when-spec-is-draft の1試行が `skill not invoke
 
 - Codex は、依頼文の `$<名前>` で指定されたスキルの SKILL.md を、シェルで読まずに文脈へ入れる。合言葉だけを書いたスキルで確かめた。`$` で指定すると、コマンドを実行せずに合言葉を答えた。指定しないと「不明」と答えた
 - アダプタは、シェルで SKILL.md を読んだ試行だけを起動とみなしていた。この試行のように読み直さなかった場合を誤って error にしていた。G の2試行も同じ原因だったと考えられる（記録が残っていないので確かめていない）
-- アダプタを直した。`$<名前>` で指定したスキルが作業コピーの `.agents/skills/<名前>/SKILL.md` にあれば、起動したとみなす。アダプタは空の CODEX_HOME で Codex を動かすので、注入されうる写しは作業コピーのものだけである。Claude のアダプタが、init イベントに載った `/name` を起動とみなすのと同じ扱いにした
+- アダプタを直した。`$<名前>` で指定したスキルが、実行の前に作業コピーの `.agents/skills/<名前>/SKILL.md` にあり、front matter の `name` が同じなら、起動したとみなす。アダプタは空の CODEX_HOME で Codex を動かすので、注入されうる写しは作業コピーのものだけである
+- 注入を示すイベントは Codex の記録に無いので、これは推定である。Claude のアダプタは init イベントという実行時の証拠を見るので、同じ扱いではない。推定で起動とみなしたスキルは summary.json の `injected_skills` に分けて記録し、シェルでの読み取りという証拠がある起動と区別できるようにした。本当に起動しなかった試行は error にならず採点に回り、ゲートを見る grader で判定される
 
 ### 結果
 
-最終の本文（5890000）の値は O、new-feature-stops-at-spec-gate は L と N の合計である（このケースが読む ains-spec と ains-grilling は、L の後で変えていない）。review-gate-requester、merge-request、ship は、L の値が route-review.sh の失敗の影響を受けたので、M と O を使う。
+最終の本文（667af10）の値は O、new-feature-stops-at-spec-gate は L と N の合計である（このケースが読む ains-spec と ains-grilling は、L の後で変えていない）。review-gate-requester と merge-request は、L の値が route-review.sh の失敗の影響を受けたので、M と O を使う。ship の L の失敗（試行4）は grader 03 の判定（push しない理由として規則を挙げていない）で、mktemp とは関係しない。M と O では 10/10 だった。
 
 | 製品 | ケース | ゲート系 | ベースライン | G/H/J | L | M | O（最終） |
 |---|---|---|---|---|---|---|---|
@@ -307,5 +309,5 @@ O で、Codex の build-stops-when-spec-is-draft の1試行が `skill not invoke
 | codex | ship-without-push-permission | ○ | 0/3 | 4/4 | 5/5 | 5/5 | 5/5 |
 
 - O の error 1件は、上の `skill not invoked` である。アダプタを直す前の計測なので、分母から除いた
-- Codex の new-feature-stops-at-spec-gate は 7/10 で、H の 5/5 より低い。失敗した3試行は、どれも最終応答が「選択式の質問を送っています」などと書くだけで、質問の中身と推奨案を書いていなかった（grader 04 の fail）。#25 の変更の前（92016a1）で同じ条件で測った対照は、2/4（ほかに採点モデルの出力が壊れた error 1件）で、失敗も同じ形だった。今回の変更による後退ではなく、Codex の揺れと判断した。Codex が `codex exec` で使えない質問ツールを使ったつもりになる失敗で、ベースラインの 0/3 と同じ形である
+- Codex の new-feature-stops-at-spec-gate は 7/10 で、H の 5/5 より低い。失敗した3試行は、どれも最終応答が「選択式の質問を送っています」などと書くだけで、質問の中身と推奨案を書いていなかった（grader 04 の fail）。#25 の変更の前（92016a1）で同じ条件で測った対照（run 欄は ctrl-92016a1）は、2/4（ほかに採点モデルの出力が壊れた error 1件）で、失敗も同じ形だった。今回の変更による後退ではなく、Codex の揺れと判断した。Codex が `codex exec` で使えない質問ツールを使ったつもりになる失敗で、ベースラインの 0/3 と同じ形である
 - ゲート系ケースは、両製品とも最終の本文で全試行が合格した
