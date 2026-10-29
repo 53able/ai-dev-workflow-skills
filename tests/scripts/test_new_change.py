@@ -53,10 +53,15 @@ class NewChangeTests(unittest.TestCase):
         self.assertFalse(target.exists(), 'an existing spec path must not create its symlink target')
 
     def test_invalid_and_missing_slug_have_no_side_effects(self):
-        for slug in ['Bad', '../escape', '-bad', 'has space', '']:
-            with self.subTest(slug=slug):
-                self.run_script(*([slug] if slug else []), want=2)
+        for args in [['Bad'], ['../escape'], ['-bad'], ['has space'], [], ['a' * 245], ['first', 'second'], ['', 'second']]:
+            with self.subTest(args=args):
+                self.run_script(*args, '--root', self.cwd / 'changes', want=2)
         self.assertEqual(list(self.cwd.iterdir()), [])
+
+    def test_longest_slug_fits_file_name_limit(self):
+        d = Path(self.run_script('a' * 244, '--root', self.cwd / 'changes').stdout.strip())
+        self.assertEqual(len(d.name.encode()), 255)
+        self.assertTrue((d / 'spec.md').is_file())
 
     def test_missing_root_value_and_unknown_option(self):
         for args in [('valid', '--root'), ('valid', '--root', '--other'), ('valid', '--unknown')]:

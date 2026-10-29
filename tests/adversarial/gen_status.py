@@ -30,7 +30,7 @@ VISIBLE = ('date', 'nondate', 'space', 'dash', 'symlink')
 # The front matter's meaning as YAML when it says approved (S-INV1 table); None = unspecified.
 INTENT = {'normal': True, 'nospace': True, 'tab': True, 'trail-ws': True, 'lead-ws': True, 'quoted': True,
           'comment': True, 'crlf': True, 'bom': True, 'dup-same': True, 'blank-first': False,
-          'upper-key': False, 'body-cr': None, 'no-close': None, 'dup-diff': None}
+          'upper-key': False, 'body-cr': True, 'no-close': False, 'dup-diff': None}
 BODY_SAFE = tuple(s for s in AXES['fm'] if s not in ('crlf', 'body-cr'))   # styles that leave body lines alone
 LINE = re.compile(r'^(?P<name>.*?)  status=(?P<status>.*?)  plan=(?P<plan>.*?)  未決=(?P<q>\d+)  tasks=(?P<done>\d+)/(?P<total>\d+)$')
 TASKS = {'template': '- [ ] T1: \n- [ ] T2: \n',

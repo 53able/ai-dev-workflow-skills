@@ -18,7 +18,7 @@ L1 生成型テスト（`run_l1.py`）が判定に使う契約と不変条件。
 | S-C2 | 並びは変更 ID（日付で始まる）の新しい順 | `status.sh:3` | S-INV3 で判定する |
 | S-C3 | `plan=approved\|draft` は tasks.md の status。status 欄が無ければ draft | `status.sh:6` | 正常な front matter では宣言値、空の tasks.md では `draft` |
 | S-C4 | tasks.md が無ければ `plan=-` | `status.sh:7` | 対象の行の `plan=-` |
-| S-C5 | front matter は1行目が `---` のファイルだけから読む | `status.sh:14-15` | S-INV1 の表で判定する |
+| S-C5 | front matter は1行目が `---` で、閉じの `---` があるファイルだけから読む。行末の CR と値の末尾の空白・タブは除く。閉じるまでに `key:`、`- ` で始まる項目、字下げ、`#` のコメント、空行のどれでもない行があれば front matter とみなさない（#26 で追加。閉じ忘れの後の本文にある水平線 `---` を閉じと取り違えないため。本文が見出し・空行・`key:` の形の行（`Note: x` など）・リスト項目だけで `---` まで続く場合は区別できない） | `status.sh:14-15` | S-INV1 の表で判定する |
 | S-C6 | 本文が空の雛形行（`- [ ] T1: `）は数えない。タスクの書式は `- [ ] T<n>: <本文>` | `status.sh:29-31`、`skills/ains-tasks/assets/tasks.md:21` | 雛形行のみ → `tasks=0/0`、`[X]`/`[x]` 2件と未完了1件 → `tasks=2/3` |
 | S-C7 | root の既定は `docs/changes`。root が無ければ「変更ディレクトリがない: <root>」を出して exit 0 | `status.sh:5,10-11` | 引数なしで `docs/changes` を読むこと、存在しない root の出力が1行であること |
 | S-C8 | 未決事項の数を出す。見出しは `## 未決事項` | `status.sh:2`、`skills/ains-spec/assets/spec.md:34` | 標準の見出しに2項目 → `未決=2`、見出しが無い → `未決=0` |
@@ -34,14 +34,14 @@ L1 生成型テスト（`run_l1.py`）が判定に使う契約と不変条件。
 |---|---|---|---|---|
 | 正常（`status: approved`） | `normal` | approved | approved | 合格 |
 | `status:approved`（空白なし）／`status:<TAB>approved` | `nospace` / `tab` | approved | approved | 合格（YAML として正しい） |
-| 行末の空白 `status: approved  ` | `trail-ws` | — | approved（値の後ろに空白が残る） | 合格（YAML として approved） |
+| 行末の空白 `status: approved  ` | `trail-ws` | — | approved | 合格（YAML として approved）。#26 の修正前は値の後ろに空白が残った |
 | 行頭の空白 `  status: approved` | `lead-ws` | — | `?` | 合格（安全側） |
 | 引用符 `"approved"` | `quoted` | `"approved"` | `"approved"` | 合格（承認とは扱われない） |
 | 行末コメント `approved # x` | `comment` | `approved # x` | `approved # note` | 合格（完全一致しないので承認とは扱われない）。SKILL.md の表での行き先は記録する |
-| CRLF ファイル | `crlf` | `?` | `?` | 合格（安全側） |
-| 本文の行末だけが CR | `body-cr` | `approved\r` | `approved\r` | unspecified（記録） |
+| CRLF ファイル | `crlf` | `?` | approved | 合格（YAML として approved）。#26 の修正前は `?` |
+| 本文の行末だけが CR | `body-cr` | `approved\r` | approved | 合格。#26 の修正前は `approved\r` |
 | BOM／1 行目が空行／大文字キー | `bom` / `blank-first` / `upper-key` | `?` | `?` | 合格（安全側） |
-| 閉じの `---` が無い | `no-close` | approved | approved | unspecified。契約（`status.sh:14-15`）は閉じの `---` を求めていない。承認ゲートに関わるので、findings 文書では「仕様未定（要判断）」として人に示す |
+| 閉じの `---` が無い | `no-close` | approved | `?` | approved が出たら不合格。#26 で、閉じの `---` が無ければ front matter とみなさない（`status=?`）と決めた。修正前は approved |
 | status の重複（同じ値） | `dup-same` | 実測する | 1 つ目の値 | 合格 |
 | status の重複（値が食い違う） | `dup-diff` | 実測する | 1 つ目の値（`approved` の後に `draft` でも approved） | unspecified |
 
@@ -74,7 +74,7 @@ L1 生成型テスト（`run_l1.py`）が判定に使う契約と不変条件。
 
 **N-INV1**: どの入力でも、既存の spec.md と symlink の参照先の内容は変わらない。壊れた symlink の参照先を作らない（`tests/scripts/test_new_change.py` の `test_existing_spec_symlink_does_not_create_missing_target` と同じ性質）。
 
-**N-INV2**: slug の引数が1つで不正な場合は exit 2 で、何も作らない。slug を複数渡した場合（`new-change.sh:19` で最後の slug が採られる）と、正規表現は通るが mkdir に失敗する長さ（256 文字）の場合は unspecified。
+**N-INV2**: slug の引数が1つで不正な場合は exit 2 で、何も作らない。#27 で、slug を複数渡した場合と、244 文字を超える slug（日付を付けると 255 バイトを超える）も同じく exit 2 で何も作らないと決めた。
 
 ## route-review.sh（`skills/ains-review-gate/scripts/route-review.sh`）
 

@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 import pairwise
-from l1lib import REPO, Case, Expect, Invocation, UNSPECIFIED, case_id, existing_rows, snapshot, today
+from l1lib import REPO, Case, Expect, Invocation, case_id, existing_rows, snapshot, today
 
 NAME = 'new-change'
 SCRIPT = 'skills/ains-spec/scripts/new-change.sh'
@@ -118,14 +118,9 @@ def expects(row):
         out.append(Expect('N-C3', '--root の値が - で始まると exit 2', lambda r: None if r.exit == 2 else f'exit {r.exit}'))
         out.append(Expect('N-C3', '何も作らない', unchanged))
         return tuple(out)
-    if order == 'multi-slug':
-        out.append(Expect(UNSPECIFIED, 'N-INV2: slug を複数渡した場合（最後の slug が採られる）は記録する'))
-        return tuple(out)
-    if slug in INVALID:
-        out.append(Expect('N-INV2', '不正な slug 1つは exit 2', lambda r: None if r.exit == 2 else f'exit {r.exit}'))
-        out.append(Expect('N-INV2', '不正な slug 1つは何も作らない', unchanged))
-    elif slug == 'long256':
-        out.append(Expect(UNSPECIFIED, 'N-INV2: 正規表現は通るが mkdir に失敗する長さは記録する'))
+    if order == 'multi-slug' or slug in INVALID or slug == 'long256':
+        out.append(Expect('N-INV2', '不正な slug（複数、244 文字超を含む）は exit 2', lambda r: None if r.exit == 2 else f'exit {r.exit}'))
+        out.append(Expect('N-INV2', '不正な slug は何も作らない', unchanged))
     elif root in CREATABLE or existing != 'none':
         out.append(Expect('N-C1', 'exit 0、stdout は <root>/<実行の直前か直後の日付>-<slug>', created(row)))
         if existing == 'none':
