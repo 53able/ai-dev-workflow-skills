@@ -56,6 +56,8 @@ status: approved
 - [x] T14: `tests/evals/run.py` の `--jobs` で Ctrl+C が実行中の試行を止めない欠陥を直す。`--jobs 1` は直列で動かし、並列時は割り込みで実行中のエージェントを止め、残りの採点を行わない
 - [x] T15: 3回目のレビューで残した5件を直す（02ca123、00ddb81）。`ains` と `ains-tasks` の例の言葉を一般形にする、`ains-ship` 5. の理由を許可しなかった規則から書く、`ains-build` で spec が approved でなければ ains-spec だけを案内する、`ains-grilling` の判断点の上限を `ains-spec` §5 と噛み合わせる、grader 02 で依頼者を確認者とする応答を可とする
 - [x] T16（効果を確かめられず打ち切り）: T15 の後も Codex の `tasks-stays-draft-without-approval` が 2/3〜2/5 のままなので、`ains-tasks` 3. に承認を求める手順は省けないと書く（4eaaa80）。2/5 で変わらず、T11 と合わせて2回で打ち切った
+- [x] T17: 「再計測」で未達だったケースの失敗を試行の記録から調べ、原因に合わせて本文を直す（9bfdc5c）。`ains-grilling`、`ains-spec` §3、`ains-tasks` 3.（T16 の文を置き換え）、`ains` 1.、`ains-build` 2. とタスク 5.、`ains-review` 1.、`ains-review-gate` 3.
+- [x] T18: spec ゲートの grader 02 を、未決事項に方針と検証方法を置く `ains-spec` §4 に合わせる（f09ad29）
   - Done when（全タスク共通）: 受入条件 AC1〜AC4
 
 ## メモ
@@ -81,3 +83,7 @@ status: approved
   - `ains-ship` 5. の「許可しなかった規則」が、任せる範囲も Agent skills 節も無いリポジトリでは指せない
   - `ains-build` 2. の「実装の依頼、急ぎ、手順の省略など」と、`ains-review-gate` のマージの条件の例が、eval の依頼文に近いまま
   - T16 で `ains-tasks` 3. に書いた「確認や質問を省くよう求めていても」は、T15 で一般形にした方針と逆に、eval の依頼文に近い。合格率も上がらなかったので、一般形に戻すかは別の作業で決める
+- 結果（T17、T18 の後、2026-10-29）: Claude Code はゲート系9ケースすべてが全試行で合格した。Codex は 7/9 で、AC2 は Codex で未達。ベースラインより下がったのは Claude Code の bugfix（3/3 → 4/5）と Codex の review-without-independent-session（2/3 → 3/5）で、AC3 も未達。詳細は `docs/eval-after-2026-10-29.md` の「未達のケースへの対応後の全ケース計測」節
+- Codex の tasks-stays-draft-without-approval と review-without-independent-session は、依頼文が確認の省略や応答の仕方を指定したとき、Codex が本文の規定より依頼文を優先して失敗する。tasks は書き方を3回変えても 2/5〜2/3 のままなので、本文の言い回しでの対応は打ち切った
+- T17 の前に別セッションの critic（REVISE）を受け、計測の前に直した。直したのは、`ains-grilling` の新しい規定を平文の質問に限ること、`ains-review` で人が示した別セッションの結果も記録できるようにすること、`ains-build` 5. のコミットの許可の範囲と、書き込めないときの数え方
+- T16 で `ains-tasks` に書いた「確認や質問を省くよう求めていても」は、T17 で置き換えた。この件のメモの懸念は解消した
