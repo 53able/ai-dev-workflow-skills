@@ -24,12 +24,12 @@
 
 基準は、戻しやすさと影響の広さ。
 
-- 人が決めて方針に書く：module 境界、公開 API と interface の signature、データの抽象と持ち主、依存方向、層をまたぐ不変条件
+- 人が決めて方針に書く：モジュール境界、公開 API と interface の signature、データの抽象と持ち主、依存方向、層をまたぐ不変条件
 - build に任せる：境界の内側の実装、private な関数の分け方、局所的な命名、テストの書き方、機械的なリファクタ
 
 方針への書き方の例：
 
-- `PaymentGateway` interface を `domain/payment` に置き、`infra/stripe` が実装する。domain から infra へ import しない
+- `Notifier` interface を `domain/notify` に置き、`infra/email` と `infra/slack` が実装する。domain から infra へ import しない
 - 金額は `Money`（整数のセントと通貨）で渡す。境界の外に float を出さない
 - `OrderService.place()` の signature は変えない。呼出し元が3か所ある
 
@@ -42,7 +42,7 @@ interface、パターン、新しい層は、次の4つがそろうときだけ�
 3. 独立した進化がある：両側を別の人やタスクが別の時期に変える
 4. 明示的な分離の仕組みがある：注入、設定、プラグインなど、差し替える手段が決まっている
 
-spec、AGENTS.md、ADR に既にある規則を守るのに必要な port は、この4条件を満たさなくても正当だ。同じ tasks.md で新しく宣言した規則を、抽象を足す根拠にはしない。実装が1つの interface や「将来のため」の層は計画しない。
+spec、AGENTS.md、ADR に既にある規則を守るための port は、4条件がそろわなくても正当とする。同じ tasks.md で新しく宣言した規則は根拠にならない。実装が1つの interface や「将来のため」の層は計画しない。
 
 ## 並行タスクと design rule
 

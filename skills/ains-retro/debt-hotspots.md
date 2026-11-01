@@ -4,22 +4,25 @@
 
 ## 集計する
 
-範囲はコミット数か開始コミットで区切る。`--since` は実行日で結果が変わるので使わない。
+範囲は直近 100 コミット（履歴が短ければ全履歴）とする。1つの変更の中だけでは、変更をまたいで繰り返す利子が見えない。`--since` は実行日で結果が変わるので使わない。
 
 ```sh
-# 範囲：変更の開始コミット以降。なければ直近 100 コミット
-range="<開始>..HEAD"        # または: range="-n 100"
+# 範囲：直近 100 コミット。履歴が短ければ全履歴になる
+range="-n 100"
 
 # ファイルごとの変更回数
 git log $range --name-only --format= | grep -v '^$' | sort | uniq -c | sort -rn | head -20
 
-# 同じコミットで一緒に変わったファイルの組
-git log $range --name-only --format='tformat:@@' \
-  | awk '/^@@$/{n=0; next} NF{f[++n]=$0; for(i=1;i<n;i++) print (f[i]<$0 ? f[i]" "$0 : $0" "f[i])}' \
+# 修正のコミット（件名が fix で始まるもの）だけの変更回数
+git log $range -i --grep='^fix' --name-only --format= | grep -v '^$' | sort | uniq -c | sort -rn | head -20
+
+# 同じコミットで一緒に変わったファイルの組（タブ区切り。マージは除く。除外は pathspec で足す）
+git log $range --no-merges --name-only --format='tformat:@@' -- . ':(exclude)*.lock' \
+  | awk '/^@@$/{n=0; next} NF{f[++n]=$0; for(i=1;i<n;i++) print (f[i]<$0 ? f[i]"\t"$0 : $0"\t"f[i])}' \
   | sort | uniq -c | sort -rn | head -20
 ```
 
-issue との紐付けやコミット種別が無くても動く。あれば、修正のコミット（`fix:` など）だけを数えた回数も見る。
+issue との紐付けやコミット種別が無くても動く。修正のコミットの集計は、件名の付け方がそろっているときだけ読む。
 
 生成物、lockfile、スナップショット、文書の一覧更新など、機械的に一緒に変わるファイルは除いて読む。
 
@@ -37,15 +40,15 @@ issue との紐付けやコミット種別が無くても動く。あれば、�
 | 種類 | 内容 | 誰が決めるか |
 |---|---|---|
 | refactoring | 振る舞いを変えない局所的・機械的な整理（抽出、改名、重複の除去） | AI が ains-tdd の整理として行える |
-| restructuring | module の境界と責務の再配置 | 人が新しい境界と責務を決める |
+| restructuring | モジュールの境界と責務の再配置 | 人が新しい境界と責務を決める |
 | rearchitecting | component の再編（分割、統合、通信方式の変更） | 人が決める |
 
 restructuring と rearchitecting を途中で止めると、古い構造と新しい構造が並存して前より悪くなる。終わらせられる範囲に切ってから始める。
 
 ## 人が決め直してから AI が実装する
 
-1. 負債候補を示し、人が直すかどうかと範囲を決める
-2. 人が新しい境界、公開 interface、依存方向、責務の割り当てを決め、ADR か次の spec に書く
+1. 負債候補をチケットにする。直すかどうかと範囲は、次の変更の ains-spec と ains-tasks で人が決める
+2. 人が新しい境界、公開 interface、依存方向、責務の割り当てを決め、ADR か次の変更の tasks.md の方針に書く
 3. その変更を ains-spec から通し、AI は ains-tasks の方針に載った design rule に従って実装する
 4. 実装後、同じ集計で一緒に変わる組と変更の偏りが減ったかを見る
 
