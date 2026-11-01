@@ -1,5 +1,14 @@
 # 配布・実行時の互換性
 
+## 2026-11-02：設計規則の知見を足した前後の計測
+
+`ains-tasks`・`ains-build`・`ains-tdd`・`ains-review`・`ains-retro` に設計規則の知見を足し、新しい4ケースと、本文を変えたスキルの既存25ケースを測った。詳細は [eval-sdai-design-2026-11-02.md](eval-sdai-design-2026-11-02.md)。
+
+- 範囲: Claude Code 2.1.316（claude-sonnet-5-5）、codex-cli 0.166.0（gpt-6.1-sol）。各ケース N=3、総試行 292。採点モデルは claude-sonnet-5-5
+- 新しい4ケースで合格したのは、Claude Code は retro だけ、Codex は tasks、build、retro。Claude Code の review は前後とも 3/3 で識別できず、Codex の review はサブエージェントを観測できないので測定不能
+- 既存ケースで回帰の候補は無かった。N=3 なので、検出できるのはおおむね 1/3 未満への低下だけ
+- この節も自動採点の結果で、人による確認に代わるものではない
+
 ## 2026-10-29：`ains-review` の引用の規定を戻した後の計測
 
 下の節で `ains-review` に足した「引用する」規定が、Codex に架空のツール呼び出しを引用させたので、規定を戻した。review-without-independent-session を両製品で N=5 測り直した。Claude Code 5/5、Codex 2/5。詳細は [eval-after-2026-10-29.md](eval-after-2026-10-29.md) の該当節。この節も自動採点の結果で、人による確認に代わるものではない。
