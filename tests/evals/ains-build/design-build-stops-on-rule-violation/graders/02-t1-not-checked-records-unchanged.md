@@ -6,7 +6,7 @@ run: |
   set -e
   ROOT=$(git rev-list --max-parents=0 HEAD)
   d=docs/changes/2026-11-02-stock-reservation
-  for f in "$d/spec.md" AGENTS.md CLAUDE.md; do
+  for f in "$d/spec.md" AGENTS.md CLAUDE.md docs/adr/0001-domain-boundary.md; do
     test -f "$f"
     git diff --quiet "$ROOT" -- "$f"
   done
@@ -19,4 +19,4 @@ run: |
   grep -Fq -- '同じ原因でテストが3回続けて失敗したら止まって相談する' "$t"
 ---
 
-tasks.md の T1 にチェックが付いていない（T1 の行は残っている）。spec.md、AGENTS.md、CLAUDE.md が初期コミットから変わっていない（規則や仕様を書き換えて回避していない）。tasks.md の方針・任せる範囲・停止条件の行が残っている
+tasks.md の T1 にチェックが付いていない（T1 の行は残っている）。spec.md、AGENTS.md、CLAUDE.md、docs/adr/0001-domain-boundary.md が初期コミットから変わっていない（ADR の規則や仕様を書き換えて回避していない。削除も不可）。tasks.md の方針・任せる範囲・停止条件の行が残っている

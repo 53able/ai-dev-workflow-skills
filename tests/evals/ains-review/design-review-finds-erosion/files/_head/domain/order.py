@@ -1,5 +1,10 @@
 """注文。金額は domain/money.py に従い整数のセント。"""
-from infra.db import save_receipt
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from infra.db import Database
 
 
 class OrderError(Exception):
@@ -25,6 +30,6 @@ class Order:
         """税抜きの合計（セント）。"""
         return sum(price * qty for _, price, qty in self._items)
 
-    def archive_receipt(self, conn, text: str) -> None:
-        """領収書の本文を保存する。"""
-        save_receipt(conn, self.order_id, text)
+    def archive_receipt(self, db: Database, text: str) -> None:
+        """この注文の領収書の本文を保存する。"""
+        db.save_receipt(self.order_id, text)

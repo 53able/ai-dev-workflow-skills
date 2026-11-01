@@ -12,5 +12,5 @@ def checkout(db: Database, order: Order, client_name: str) -> tuple[int, str]:
     amount = order.total() + money.tax(order.total())
     db.save_order(order.order_id, order.customer_id, amount)
     text = receipt.build_receipt(order, buyer_name=client_name)
-    order.archive_receipt(db.conn, text)
+    order.archive_receipt(db, text)
     return amount, text

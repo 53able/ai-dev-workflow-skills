@@ -16,11 +16,10 @@ class Database:
         row = self.conn.execute('SELECT amount FROM orders WHERE order_id = ?', (order_id,)).fetchone()
         return row[0] if row else None
 
+    def save_receipt(self, order_id: str, body: str) -> None:
+        self.conn.execute('INSERT OR REPLACE INTO receipts VALUES (?, ?)', (order_id, body))
+        self.conn.commit()
+
     def receipt_of(self, order_id: str) -> str | None:
         row = self.conn.execute('SELECT body FROM receipts WHERE order_id = ?', (order_id,)).fetchone()
         return row[0] if row else None
-
-
-def save_receipt(conn, order_id: str, body: str) -> None:
-    conn.execute('INSERT OR REPLACE INTO receipts VALUES (?, ?)', (order_id, body))
-    conn.commit()

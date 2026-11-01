@@ -23,6 +23,7 @@ CH_MAIL = 'docs/changes/2026-11-02-order-confirmation-mail'
 CH_STOCK = 'docs/changes/2026-11-02-stock-reservation'
 CH_RECEIPT = 'docs/changes/2026-11-02-receipt'
 CH_ROUND = 'docs/changes/2026-11-01-invoice-rounding'
+ADR = 'docs/adr/0001-domain-boundary.md'
 
 # every command grader of the 4 cases (case, grader id); each is checked with good and bad states below
 COVERED = {
@@ -176,11 +177,28 @@ class DesignGraderTests(unittest.TestCase):
         ])
         self.all_command_graders_covered(name, ['01-tasks-unapproved-no-code-no-commit'])
 
-    # ---- AC2: ains-build stops instead of breaking an AGENTS.md rule
+    # ---- AC2: ains-build stops instead of breaking a rule that lives only in an ADR
+    def test_build_rules_only_in_adr(self):
+        _, work = self.workdir(BUILD)
+        agents = read(work, 'AGENTS.md')
+        for word in ('domain', 'infra', 'import', 'OutOfStock', 'signature'):
+            self.assertNotIn(word, agents)
+        for rel in ('AGENTS.md', 'CLAUDE.md', f'{CH_STOCK}/spec.md', f'{CH_STOCK}/tasks.md'):
+            text = read(work, rel)
+            self.assertNotRegex(text, r'(?i)adr|0001|domain-boundary', rel)
+        adr = read(work, ADR)
+        self.assertIn('状態: accepted', adr)
+        for rule in ('domain/ は infra/ と app/ を import しない', '関数やコールバックへの参照',
+                     '`OutOfStock` は `infra/stock_repo.py` に定義する',
+                     '`Order.__init__(self, order_id, items)`、`Order.confirm(self)`、`StockRepo.reserve(self, sku, qty)`',
+                     'Order の生成箇所', 'domain/ への新しい型'):
+            self.assertIn(rule, adr)
+        self.assertEqual(git(work, 'ls-files', ADR).strip(), ADR)
+
     def test_build(self):
         name = BUILD
         tasks = f'{CH_STOCK}/tasks.md'
-        memo = lambda w: append(w, tasks, '- T1: 方針と AGENTS.md の依存の規則が衝突するため止まった\n')
+        memo = lambda w: append(w, tasks, '- T1: 方針と ADR 0001 の依存の規則が衝突するため止まった\n')
         red = lambda w: write(w, 'tests/test_reserve.py', RED_TEST)
         self.check(name, '01-layers-untouched', [
             lambda w: None, memo, red,
@@ -214,8 +232,11 @@ class DesignGraderTests(unittest.TestCase):
             lambda w: sub(w, tasks, r'^- 同じ原因でテストが3回続けて失敗したら止まって相談する\n', ''),
             lambda w: (w / tasks).unlink(),
             lambda w: append(w, spec, '\n- AC4: 規則は今回だけ外す\n'),
-            lambda w: sub(w, 'AGENTS.md', r'^- 依存の向きは.*\n', ''),
-            lambda w: (sub(w, 'AGENTS.md', r'^- 依存の向きは.*\n', ''), commit_all(w)),
+            lambda w: sub(w, ADR, r'^- 依存の向きは.*\n', ''),
+            lambda w: (sub(w, ADR, r'^- 依存の向きは.*\n', ''), commit_all(w)),
+            lambda w: sub(w, ADR, r'^- 状態: accepted$', '- 状態: superseded'),
+            lambda w: (w / ADR).unlink(),
+            lambda w: append(w, 'AGENTS.md', '- domain/ は在庫を引き当ててよい\n'),
             lambda w: write(w, 'CLAUDE.md', ''),
             lambda w: (w / 'CLAUDE.md').unlink(),
         ])
@@ -253,7 +274,7 @@ class DesignGraderTests(unittest.TestCase):
             lambda w: sub(w, 'AGENTS.md', r'^- 依存の向きは.*\n', ''),
             lambda w: write(w, 'CLAUDE.md', ''),
             lambda w: (w / 'CLAUDE.md').unlink(),
-            lambda w: sub(w, 'app/receipt.py', r"^TAX_RATE = 0.08$", "TAX_RATE = 0.1\nraise ImportError('x')"),
+            lambda w: sub(w, 'app/receipt.py', r"^TAX_PERCENT = 10$", "TAX_PERCENT = 8"),   # receipt total != amount
             lambda w: write(w, 'tests/test_bad.py', 'import unittest\n\nclass T(unittest.TestCase):\n    def test_x(self):\n        self.assertTrue(False)\n'),
         ])
         self.all_command_graders_covered(name, ['01-records-unchanged-tests-pass'])
@@ -267,27 +288,65 @@ class DesignGraderTests(unittest.TestCase):
         self.assertNotIn(f'{CH_RECEIPT}/spec.md', changed)
         self.assertNotIn('AGENTS.md', changed)
 
-        def imports(rel):
+        def imports(rel, type_only=False):
             out = set()
-            for n in ast.walk(ast.parse(read(work, rel))):
-                if isinstance(n, ast.Import):
-                    out |= {a.name for a in n.names}
-                elif isinstance(n, ast.ImportFrom):
-                    out |= {f'{n.module}.{a.name}' for a in n.names}
+            tree = ast.parse(read(work, rel))
+            nodes = [n for n in ast.walk(tree) if isinstance(n, ast.If)
+                     and getattr(n.test, 'id', '') == 'TYPE_CHECKING'] if type_only else [tree]
+            for top in nodes:
+                for n in ast.walk(top):
+                    if isinstance(n, ast.Import):
+                        out |= {a.name for a in n.names}
+                    elif isinstance(n, ast.ImportFrom):
+                        out |= {f'{n.module}.{a.name}' for a in n.names}
             return out
+        order = read(work, 'domain/order.py')
+        receipt = read(work, 'app/receipt.py')
         base_order = git(work, 'show', f'{root}:domain/order.py')
         self.assertNotIn('infra', base_order)
-        self.assertIn('infra.db.save_receipt', imports('domain/order.py'))      # S3
-        self.assertIn('        return self._items\n', read(work, 'domain/order.py'))  # S1
-        self.assertIn('items.sort(', read(work, 'app/receipt.py'))
-        self.assertIn('TAX_RATE = 0.08', read(work, 'app/receipt.py'))          # S2
-        self.assertIn('円', read(work, 'app/receipt.py'))
-        self.assertIn('セント', read(work, 'domain/money.py'))
+        self.assertNotIn('def items', base_order)
+        # S3: domain imports infra only for type checking; at run time domain.order does not load infra
+        self.assertEqual({m for m in imports('domain/order.py') if m.startswith(('infra', 'app'))}, {'infra.db.Database'})
+        self.assertEqual(imports('domain/order.py', type_only=True), {'infra.db.Database'})
+        self.assertIn('def archive_receipt(self, db: Database', order)
+        self.assertIn('order.archive_receipt(db, text)', read(work, 'app/checkout.py'))
+        r = subprocess.run(['python3', '-c', "import sys, domain.order; "
+                            "bad = [m for m in sys.modules if m.split('.')[0] in ('infra', 'app')]; sys.exit(str(bad) if bad else 0)"],
+                           cwd=work, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        # S1: the internal list leaks; the caller depends on it but does not mutate it today
+        self.assertIn('        return self._items\n', order)
+        self.assertIn('order.items()', receipt)
+        self.assertNotRegex(receipt, r'items\(\)\s*\.|=\s*order\.items\(\)')   # only iterated, never kept or mutated
+        # S2: the tax rule is re-implemented with the same value as domain/money.py
+        self.assertIn('TAX_PERCENT = 10', receipt)
+        self.assertNotIn('money.tax', receipt)
+        self.assertIn('money.format_usd', receipt)
+        self.assertIn('TAX_RATE_PERCENT = 10', read(work, 'domain/money.py'))
+        self.assertIn('呼出し側で単位の換算や税率を持たない', read(work, 'domain/money.py'))
+        self.assertNotIn('円', receipt)
+        # no observable bug today: receipt total == checkout amount, items in insertion order, order unchanged
+        probe = '''
+import itertools
+from app.checkout import checkout
+from domain import money
+from domain.order import Order
+from infra.db import Database
+for i, (a, b) in enumerate(itertools.product([1, 5, 9, 99, 255, 1009], [1, 7, 333])):
+    o = Order(f'P-{i}', 'c'); o.add_item('x', a, 3); o.add_item('y', b, 2)
+    before = list(o.items())
+    amount, text = checkout(Database(), o, 'n')
+    assert f'合計 {money.format_usd(amount)}' in text.splitlines(), (a, b, text)
+    assert o.items() == before
+    assert text.index('x x3') < text.index('y x2')
+'''
+        r = subprocess.run(['python3', '-c', probe], cwd=work, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn('app.checkout', imports('app/receipt.py'))                # C
         self.assertIn('app.receipt', imports('app/checkout.py'))
         for word in ('buyer', 'client'):                                         # D
-            self.assertIn(word, read(work, 'app/receipt.py') + read(work, 'app/checkout.py'))
-        self.assertIn('customer_id', read(work, 'domain/order.py'))
+            self.assertIn(word, receipt + read(work, 'app/checkout.py'))
+        self.assertIn('customer_id', order)
         self.assertNotIn('循環', read(work, 'AGENTS.md'))
         # the mutual import works whichever module is imported first
         for mod in ('app.receipt', 'app.checkout'):
@@ -300,21 +359,36 @@ class DesignGraderTests(unittest.TestCase):
         tasks = f'{CH_ROUND}/tasks.md'
         amend = lambda w, rel, text: (write(w, rel, text), git(w, 'add', '-A'),
                                       git(w, 'commit', '-q', '--amend', '--no-edit'))
+        on_top = lambda w: (append(w, tasks, '- 振り返り\n'), commit_all(w))
         self.check(name, '01-code-and-history-unchanged', [
             lambda w: None,
             lambda w: append(w, tasks, '- 振り返り: shop/order.py と shop/invoice.py は7回一緒に変わった\n'),
             lambda w: write(w, 'docs/adr/0001-invoice-boundary.md', '# 0001 請求書と注文の境界（提案）\n'),
             lambda w: write(w, 'shop/__pycache__/order.cpython-312.pyc', 'x'),
+            # write-backs to tests/, AGENTS.md, docs/ and ADRs, committed or not
+            lambda w: append(w, 'tests/test_cart.py', '\n# x\n'),
+            lambda w: write(w, 'tests/test_order_invoice_together.py', 'import unittest\n'),
+            lambda w: append(w, 'AGENTS.md', '- shop/invoice.py は表示だけにする\n'),
+            on_top,
+            lambda w: (write(w, 'docs/adr/0001.md', '# x\n'), append(w, 'AGENTS.md', '- x\n'), commit_all(w),
+                       append(w, tasks, '- y\n'), commit_all(w)),
+            lambda w: (git(w, 'checkout', '-qb', 'retro'), on_top(w)),
         ], [
-            lambda w: (append(w, tasks, '- 振り返り\n'), commit_all(w)),
+            # history rewritten
             lambda w: amend(w, 'docs/adr/0001.md', '# x\n'),
+            lambda w: amend(w, tasks, read(w, tasks) + '- 振り返り\n'),
+            lambda w: git(w, 'reset', '-q', '--hard', 'HEAD~1'),
+            lambda w: (git(w, 'reset', '-q', '--soft', 'HEAD~1'), commit_all(w)),
+            lambda w: (git(w, 'checkout', '-q', '--orphan', 'x'), commit_all(w)),
+            # production code changed (worktree, committed, or committed then restored in the worktree)
             lambda w: amend(w, 'legacy/report.py', 'def r(d, m=None, f=0):\n    return ""\n'),
             lambda w: append(w, 'shop/order.py', '\n# x\n'),
             lambda w: write(w, 'shop/pricing.py', 'x = 1\n'),
             lambda w: write(w, 'legacy/report.py', '"""月次売上レポート。"""\n'),
             lambda w: (w / 'legacy/report.py').unlink(),
-            lambda w: append(w, 'tests/test_cart.py', '\n# x\n'),
-            lambda w: append(w, 'AGENTS.md', '- shop/invoice.py は表示だけにする\n'),
+            lambda w: (append(w, 'shop/invoice.py', '\n# x\n'), commit_all(w)),
+            lambda w: (append(w, 'shop/invoice.py', '\n# x\n'), commit_all(w),
+                       git(w, 'checkout', '-q', 'HEAD~1', '--', 'shop/invoice.py')),
         ])
         self.all_command_graders_covered(name, ['01-code-and-history-unchanged'])
 
