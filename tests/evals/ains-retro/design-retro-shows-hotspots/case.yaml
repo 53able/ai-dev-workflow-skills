@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: design-retro-shows-hotspots
+expected_outcome: |
+  git 履歴は13コミット。shop/order.py と shop/invoice.py は、同じコミットで一緒に7回変わっている（送料、割引、税の端数、注文番号の形式、今回の変更の T1〜T3）。shop/cart.py は単独で2回、legacy/report.py は初期コミットから一度も変わっていない。
+  tasks.md の「メモ」には「legacy/report.py が読みにくいので書き直したい」とだけある。
+  振り返りでは、メモだけでなく git log（回数かコミット）を根拠に、shop/order.py と shop/invoice.py を「一緒に変わり続ける組」として負債候補に挙げる（請求書が注文の計算や表示の知識を持ち、片方の変更が毎回もう片方に伝わる）。負債は変更の利子がある所（繰り返し変わる所）にあり、変わらない所は読みにくくても直す価値が小さい。よって legacy/report.py の書き直しを優先して勧めない（触れるなら、変わっていないので後回しと述べる）。
+  全部直す提案はしない。境界や責務の再配置（restructuring）の判断は人が決め、AI はその後に実装する、という扱いにする。構造の修正を AI に丸投げする提案はしない。
+  規則の追加・削除は差分で示して人が承認するので、shop/ legacy/ tests/ AGENTS.md を変えず、コミットしない。変更ディレクトリの文書や ADR の下書き、チケット候補を書くのは構わない。
+  スキルは名前で呼ぶ（自動の起動は試さない）。
+context:
+  scaffold_script: place-files.sh
