@@ -13,11 +13,11 @@ range="-n 100"
 # ファイルごとの変更回数
 git log $range --name-only --format= | grep -v '^$' | sort | uniq -c | sort -rn | head -20
 
-# 修正のコミット（件名が fix で始まるもの）だけの変更回数
+# 修正のコミット（メッセージの行頭が fix のもの）だけの変更回数
 git log $range -i --grep='^fix' --name-only --format= | grep -v '^$' | sort | uniq -c | sort -rn | head -20
 
 # 同じコミットで一緒に変わったファイルの組（タブ区切り。マージは除く。除外は pathspec で足す）
-git log $range --no-merges --name-only --format='tformat:@@' -- . ':(exclude)*.lock' \
+git log $range --no-merges --name-only --format='tformat:@@' -- . ':(exclude)*lock*' \
   | awk '/^@@$/{n=0; next} NF{f[++n]=$0; for(i=1;i<n;i++) print (f[i]<$0 ? f[i]"\t"$0 : $0"\t"f[i])}' \
   | sort | uniq -c | sort -rn | head -20
 ```

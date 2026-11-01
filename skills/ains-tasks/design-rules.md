@@ -29,7 +29,7 @@
 
 方針への書き方の例：
 
-- `Notifier` interface を `domain/notify` に置き、`infra/email` と `infra/slack` が実装する。domain から infra へ import しない
+- `ReportExporter` interface を `domain/report` に置き、`infra/csv` と `infra/pdf` が実装する。domain から infra へ import しない
 - 金額は `Money`（整数のセントと通貨）で渡す。境界の外に float を出さない
 - `OrderService.place()` の signature は変えない。呼出し元が3か所ある
 
