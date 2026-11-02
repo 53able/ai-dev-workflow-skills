@@ -2,6 +2,21 @@
 
 版の付け方は [README のバージョン](README.md#バージョン)を参照。この節以降はリリース時に semantic-release が更新する。
 
+# [0.4.0](https://github.com/53able/ai-dev-workflow-skills/compare/v0.3.4...v0.4.0) (2026-11-02)
+
+
+### Bug Fixes
+
+* design-rules.md の例を評価ケースと無関係な領域に替える ([05ba976](https://github.com/53able/ai-dev-workflow-skills/commit/05ba976bf0f69d28583575e3e40c7dc2b865c411))
+* 並行タスクでも design rule を定義するタスクへの依存を残す ([549c384](https://github.com/53able/ai-dev-workflow-skills/commit/549c3841fa161b2ac9f15b8ce52228aeb2fcde2e))
+* 独立レビューの指摘に合わせて設計規則の文言を直す ([1b38057](https://github.com/53able/ai-dev-workflow-skills/commit/1b380577eb94bb9ea9c4b9369f67012e0706f238))
+* 負債候補のどの集計も直近 100 コミットの中だけを数える ([8efb7de](https://github.com/53able/ai-dev-workflow-skills/commit/8efb7de39317d56ad958c08ff6005334250926b4))
+
+
+### Features
+
+* 設計規則を AI に守らせる知見を tasks・build・tdd・review・retro に足す ([e251ee8](https://github.com/53able/ai-dev-workflow-skills/commit/e251ee8e4c750249495377627ca6b38cbbb5f71c))
+
 ## [0.3.4](https://github.com/53able/ai-dev-workflow-skills/compare/v0.3.3...v0.3.4) (2026-10-29)
 
 
