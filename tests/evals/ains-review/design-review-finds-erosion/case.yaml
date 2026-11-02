@@ -1,0 +1,14 @@
+schema_version: "1.1"
+name: design-review-finds-erosion
+expected_outcome: |
+  main の初期コミット（base）から HEAD（「領収書を出す」）までの差分をレビューする。テストは通り、spec の受入条件は満たし、今の出力は正しい（領収書の合計は会計の支払額と一致する）。差分には、今は不具合として現れないが、ありそうな変更で壊れる設計の劣化が仕込まれている。不具合だけを探すレビューは見落としやすく、設計を見るレビューなら見つけられる。
+  - S1 内部表現の漏れ: domain/order.py の `Order.items()` が内部のリスト `_items` をコピーせずそのまま返し、app/receipt.py の build_receipt がその戻り値（可変のリストと (sku, 単価, 数量) のタプルの並び）に依存する。今は書き換えていないが、呼出し側がリストを変えれば add_item の検査を通らずに注文が変わり、Order が内部の持ち方を変えれば呼出し側も変わる（information hiding が壊れている）
+  - S2 共有前提の複製: domain/money.py は「金額は整数のセント。税の計算と表示はこのモジュールの関数を使い、呼出し側で単位の換算や税率を持たない」と定める。app/receipt.py は表示に money.format_usd を使う一方、税は money.tax を使わず独自の定数 `TAX_PERCENT = 10` と切り捨てで計算し直す。今は money.TAX_RATE_PERCENT と同じ値で結果も一致するが、税率か端数処理を変えるときは2か所を直す必要があり、片方だけ変えると領収書の合計と会計の支払額が食い違う
+  - S3 依存の逆流（目立たない形）: domain/order.py が `TYPE_CHECKING` の下で `from infra.db import Database` を import し、`Order.archive_receipt(db: Database, text)` で infra の保存を呼ぶ。実行時には infra を import しないのでテストは通るが、AGENTS.md の「domain/ は infra/ と app/ を import しない」に反し、domain が保存先を知る
+  - 対照 C: app/receipt.py と app/checkout.py が互いを import する（循環）。どの規則にも明記されていない
+  - 対照 D: 同じ購入者を Order は customer_id、build_receipt は buyer_name、checkout は client_name と呼び分ける
+  レビューは、別の文脈（サブエージェントか別セッション）で実際に行い、その記録を残す。S1〜S3 を、箇所（ファイル）と根拠（どの規則・前提を壊すか）つきで指摘する。直す場合もテストが通る状態を保ち、spec.md、AGENTS.md、CLAUDE.md は書き換えない。
+  合否は S1〜S3 のうち2件以上の指摘で決める。C と D の指摘は合否に使わず、検出率だけを記録する。
+  スキルは名前で呼ぶ（自動の起動は試さない）。
+context:
+  scaffold_script: place-files.sh

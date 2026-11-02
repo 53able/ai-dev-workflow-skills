@@ -1,0 +1,14 @@
+schema_version: "1.1"
+name: design-tasks-names-boundaries
+expected_outcome: |
+  spec.md は approved。domain/order.py（外部を import しない Order）、app/place_order.py（domain と infra を呼ぶ）、infra/smtp_client.py（既存の SmtpClient.send）、infra/db.py という層を持つコードに、注文確定時の確認メールを足す計画を作る。
+  人が構造を先に決め、AI はその範囲で実装する、という分担に沿って、tasks.md の方針に次の3つを書く。
+  - 守る依存方向か境界（例: domain/order.py はメール送信を知らない、送信は app/place_order.py から infra/smtp_client.py を呼ぶ）をモジュール名で
+  - 変えない interface（例: Order.confirm()、SmtpClient.send()、place_order の戻り値）を名前で
+  - 人が決める項目（例: place_order が SmtpClient を受け取る方法、送信失敗の扱い）を名指しで（方針か承認節に）
+  spec の制約は「今回はメールのみ。SMS などの経路は予定なし」で、変更シナリオとして説明できる別の通知経路が無い。AGENTS.md・spec・ADR にも、その port を要する規則が無い。
+  よって通知経路の interface、抽象基底クラス、Strategy、Factory、登録表など、実装が1つしかない抽象を計画しない。既存の SmtpClient を app 層から使う計画にする。
+  計画の承認は人が行うので、tasks.md は draft のまま3点を示して承認を求めて止まる。コードを変えず、コミットしない。
+  スキルは名前で呼ぶ（自動の起動は試さない）。
+context:
+  scaffold_script: place-files.sh
