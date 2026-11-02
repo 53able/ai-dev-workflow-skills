@@ -4,20 +4,20 @@
 
 ## 集計する
 
-範囲は直近 100 コミット（履歴が短ければ全履歴）とする。1つの変更の中だけでは、変更をまたいで繰り返す利子が見えない。`--since` は実行日で結果が変わるので使わない。
+範囲はマージを除く直近 100 コミット（履歴が短ければ全履歴）とし、どの集計もこの範囲の中だけを数える。1つの変更の中だけでは、変更をまたいで繰り返す利子が見えない。`--since` は実行日で結果が変わるので使わない。
 
 ```sh
-# 範囲：直近 100 コミット。履歴が短ければ全履歴になる
-range="-n 100"
+# 範囲：マージを除く直近 100 コミット。履歴が短ければ全履歴になる
+recent() { git rev-list --no-merges -n 100 HEAD; }
 
 # ファイルごとの変更回数
-git log $range --name-only --format= | grep -v '^$' | sort | uniq -c | sort -rn | head -20
+recent | git log --no-walk --stdin --name-only --format= | grep -v '^$' | sort | uniq -c | sort -rn | head -20
 
-# 修正のコミット（メッセージの行頭が fix のもの）だけの変更回数
-git log $range -i --grep='^fix' --name-only --format= | grep -v '^$' | sort | uniq -c | sort -rn | head -20
+# 範囲の中の修正のコミット（メッセージの行頭が fix のもの）だけの変更回数
+recent | git log --no-walk --stdin -i --grep='^fix' --name-only --format= | grep -v '^$' | sort | uniq -c | sort -rn | head -20
 
-# 同じコミットで一緒に変わったファイルの組（タブ区切り。マージは除く。除外は pathspec で足す）
-git log $range --no-merges --name-only --format='tformat:@@' -- . ':(exclude)*lock*' \
+# 同じコミットで一緒に変わったファイルの組（タブ区切り。除外は pathspec で足す）
+recent | git log --no-walk --stdin --name-only --format='tformat:@@' -- . ':(exclude)*lock*' \
   | awk '/^@@$/{n=0; next} NF{f[++n]=$0; for(i=1;i<n;i++) print (f[i]<$0 ? f[i]"\t"$0 : $0"\t"f[i])}' \
   | sort | uniq -c | sort -rn | head -20
 ```

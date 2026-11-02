@@ -24,6 +24,7 @@ jobs:
       - run: bash tests/distribution/test-distribution.sh
       - run: bash tests/scripts/test-status.sh
       - run: bash tests/scripts/test-new-change.sh
+      - run: bash tests/scripts/test-debt-hotspots.sh
       - run: bash tests/route-review/test-route-review.sh
       - run: bash tests/evals/test-run.sh
 
