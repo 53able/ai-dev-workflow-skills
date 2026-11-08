@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: workflow-legacy-manual-policy
+expected_outcome: |
+  既存AGENTSの各工程明示起動規則を保持し、計画作成や実装へ進めない。起動方針を自動的に移行しない。必要な次の工程と制約を説明する。
+context:
+  scaffold_script: place-files.sh

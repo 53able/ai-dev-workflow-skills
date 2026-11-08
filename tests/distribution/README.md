@@ -13,7 +13,7 @@ Requires bash, uv (Python 3.11+ stdlib via `uv run`), git, Node/npm/npx and acce
 
 `--static-only` skips the CLI matrix. `--log-dir <directory>` retains CLI output and exit codes. `--eval-inventory <original-eval-inventory.json>` additionally verifies the exact migrated file set, hashes and modes under `tests/evals/<skill>/`. The original eval inventory records the pre-move files and is retained privately.
 
-`intended-skills.json` is the independently specified design inventory: ten manual stage roles, six automatic disciplines and required runtime resources. A deliberate architecture change must update this reviewed contract; deriving expectations solely from discovered files would miss accidental deletion or reclassification.
+`intended-skills.json` is the independently specified design inventory: five explicit-only stages, five agent-callable core stages, six automatic disciplines and required runtime resources. The `manual` inventory contains the explicit coordinator and retro/team-canvas/harness/tool-access; `automatic` contains setup/spec/tasks/build/ship and the six disciplines. Callable metadata does not authorize work or replace user approvals. A deliberate architecture change must update this reviewed contract; deriving expectations solely from discovered files would miss accidental deletion or reclassification.
 
 Metadata checks parse only the owned subset documented in `check_distribution.py`: first-line frontmatter and the exact Codex `policy.allow_implicit_invocation` block. Unsupported or duplicate policy syntax fails with an explicit error. Parser fixtures prove that body text, comments and another section's similarly named property cannot satisfy the control. This is not a general YAML parser.
 

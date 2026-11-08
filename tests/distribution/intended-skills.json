@@ -1,8 +1,8 @@
 {
-  "manual": ["ains", "ains-build", "ains-harness", "ains-retro", "ains-setup", "ains-ship", "ains-spec", "ains-tasks", "ains-team-canvas", "ains-tool-access"],
-  "automatic": ["ains-context-care", "ains-grilling", "ains-release-safety", "ains-review", "ains-review-gate", "ains-tdd"],
+  "manual": ["ains", "ains-harness", "ains-retro", "ains-team-canvas", "ains-tool-access"],
+  "automatic": ["ains-build", "ains-context-care", "ains-grilling", "ains-release-safety", "ains-review", "ains-review-gate", "ains-setup", "ains-ship", "ains-spec", "ains-tasks", "ains-tdd"],
   "required_resources": {
-    "ains": ["scripts/status.sh"],
+    "ains": ["scripts/status.sh", "workflow.md"],
     "ains-spec": ["scripts/new-change.sh", "assets/spec.md", "sdd-tools.md", "prototype.md", "existing-system.md"],
     "ains-setup": ["../ains-spec/sdd-tools.md", "../ains-review-gate/assets/human-review-rules.example"],
     "ains-tasks": ["assets/tasks.md", "parallel.md", "design-rules.md"],

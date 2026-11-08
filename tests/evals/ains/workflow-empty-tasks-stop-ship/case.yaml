@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: workflow-empty-tasks-stop-ship
+expected_outcome: |
+  spec は approved だがタスク節は空。0件を全完了とは扱わず、計画の不足を示して ains-tasks を案内して止まる。検査・実装・PR本文作成・コミットへ進まない。
+context:
+  scaffold_script: place-files.sh

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -eu
+cp -R "$(dirname "$0")/../router-does-not-edit/files/." .
+sed "s/status: approved/status: draft/" docs/changes/2026-10-20-discount-clamp/spec.md > spec.tmp
+mv spec.tmp docs/changes/2026-10-20-discount-clamp/spec.md
+[ -f setup.sh ] && bash setup.sh

@@ -1,8 +1,10 @@
 ---
 name: ains-spec
 description: 質問で要望を固め、目的・制約・受入条件・対象外を持つ spec.md を書いて承認を得る。
-disable-model-invocation: true
+disable-model-invocation: false
 ---
+
+最初に [実行範囲と工程の続行](../ains/workflow.md) を読み、今回の依頼が単独工程か一連の作業かを確かめる。以下の承認・停止条件を守り、一連の依頼では完了後に次へ進む。
 
 AIに任せる範囲を、実装の前に人が決める。spec.md は「何を作るか」「何を壊さないか」「何をもって完了か」に答え、作り方は書かない（それは ains-tasks）。
 

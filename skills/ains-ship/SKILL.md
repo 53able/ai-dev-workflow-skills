@@ -1,10 +1,18 @@
 ---
 name: ains-ship
 description: 実装済みの変更を検証し、レビューと人の確認の要否を判定して PR 本文にまとめ、マージと展開の判断を人に求める。
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
+最初に [実行範囲と工程の続行](../ains/workflow.md) を読み、今回の依頼が単独工程か一連の作業かを確かめる。以下の承認・停止条件を守り、一連の依頼では完了後に次へ進む。
+
 機械で確かめられることを先に済ませ、人には判断だけを渡す。人の確認時間がいちばん希少だからだ。結果は PR 本文の雛形 [assets/pr-body.md](assets/pr-body.md) に集める。
+
+## 始める前に
+
+対象の spec.md と（あれば）tasks.md を別々に読み、ains-build と同じ順序で承認を確かめる。spec が approved でなければ ains-spec、spec が approved でも tasks が未承認なら ains-tasks を案内して止まる。status 欄の欠損や読めない状態も未承認として扱い、依頼文から承認を推測しない。小さな変更は spec のタスクを使う。
+
+タスクが1件も無ければ（tasks.md と spec のタスク節の両方が無い場合、空の節だけがある場合を含む）、計画が欠落していることを示して ains-tasks を案内して止まる。未完了のタスクがあれば、検査・修正・PR 本文の作成に入らず、ains-build で残るタスクを終える必要を示す。一連の作業の依頼では workflow.md に従い承認済みの残タスクへ戻れるが、単独の ship 依頼を実装へ広げない。承認や完了状態を ship 自身で書き換えない。
 
 ## 1. 決定的な検査
 
@@ -47,4 +55,4 @@ PR 本文を埋める。PR の作成と push は、Agent skills 節の外向き�
 ## 完了条件
 
 PR 本文（または pr.md）がすべて埋まり、人がマージと展開を判断した。
-次は ains-retro。
+次は必要に応じて ains-retro を案内する。明示依頼がなければ自動では始めない。

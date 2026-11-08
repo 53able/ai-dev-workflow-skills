@@ -10,22 +10,25 @@ AIを使った開発が初めてなら、[小さな変更を通して試す](doc
 
 ## 使い方
 
-入口は Claude Code の `/ains`、Codex の `$ains`。今の状況を見て、次に使うスキルを示す。以下の流れと表は Claude Code の表記で、Codex では先頭の `/` を `$` に置き換える。
+入口は Claude Code の `/ains`、Codex の `$ains`。コマンドだけ、または状態確認の依頼なら、ファイルを変えず次の工程を示す。「この変更を仕様から出荷資料まで進めて」のように実行を依頼すると、対象の変更1件について工程を続行する。対象が曖昧なら、編集前に確認する。最新の変更を選ぶ既定は状態確認だけに使う。以下は Claude Code の表記で、Codex では先頭の `/` を `$` に置き換える。
 
 ```
-/ains-setup → /ains-spec → /ains-tasks → /ains-build → /ains-ship → /ains-retro
-（初回のみ）   質問して仕様   方針とタスク   テスト先行で実装  検証・PR・展開   学びを戻す
+/ains に対象と実行を依頼
+  → ains-setup → ains-spec → ains-tasks → ains-build → ains-ship
+    （初回のみ）   仕様の承認    計画の承認     テスト先行     出荷の判断
 ```
 
-小さな変更は `/ains-spec` の中にタスクも書き、`/ains-tasks` を省く。1行の修正は流れに乗せない。
+仕様・計画を人が承認したら、同じ実行依頼の範囲で次の工程へ進む。工程ごとのコマンド再入力や、同じ承認の繰り返しは要らない。未承認・範囲変更では判断を待つ。検査失敗は任せられた範囲と試行上限の中で修正し、独立レビューを完了できなければ未完了を示して止まる。コミット、push、PR作成、マージ、デプロイの許可は別に確かめる。
+
+小さな変更は `ains-spec` の中にタスクも書き、`ains-tasks` を省く。1行の修正は流れに乗せない。個別の工程だけを呼ぶ使い方もでき、その依頼では当該工程までで終える。振り返りは出荷後に `/ains-retro` を明示して呼ぶ。
 
 ## スキル
 
-### 利用者が呼ぶ
+### 入口と開発の工程
 
 | スキル | 成果 |
 |---|---|
-| `/ains` | 次に使うスキル |
+| `/ains` | 状態確認、または対象を指定した一連の工程の実行 |
 | `/ains-setup` | AGENTS.md の Agent skills 節（CLAUDE.md からも読み込む）と、人の確認の規則 |
 | `/ains-spec` | `status: approved` の spec.md |
 | `/ains-tasks` | `status: approved` の tasks.md（Done when 付き） |
@@ -36,7 +39,7 @@ AIを使った開発が初めてなら、[小さな変更を通して試す](doc
 | `/ains-harness` | CI と自動化の次の一手 |
 | `/ains-tool-access` | 外部ツールの接続方針と権限 |
 
-利用者が呼ぶ段階は、Claude Code の `disable-model-invocation: true` と Codex の `agents/openai.yaml` の `policy.allow_implicit_invocation: false` で明示起動にする。これは起動の制御であり、操作権限や仕様・計画への承認を与える設定ではない。Codex での文脈節約量は保証しない。
+`ains` と、振り返り・チーム合意・ハーネス・ツール接続の4工程は明示起動のままにする。Claude Code の `disable-model-invocation: true` と Codex の `agents/openai.yaml` の `policy.allow_implicit_invocation: false` が対応する。主要5工程（setup・spec・tasks・build・ship）はエージェントからも呼べる。呼べることは、依頼範囲や仕様・計画の承認、操作権限を与えない。Codex での文脈節約量は保証しない。
 
 ### エージェントが必要に応じて使う
 
@@ -96,6 +99,8 @@ npx --yes skills@1.7.4 list -a claude-code codex
 設定の正本は `AGENTS.md` の Agent skills 節とし、Claude Code は `CLAUDE.md` の `@AGENTS.md` import で読む。既存の CLAUDE.md だけにある設定はその節を移し、無関係な文章を保持する。重複は統合し、値が食い違う場合は選択を確認してから移す。同一実体・シンボリックリンクは重複書き込みや自己 import を避ける。詳細と未検証の移行ケースは[互換性文書](docs/compatibility.md)を参照。
 
 ### 更新・削除
+
+主要5工程を明示起動限定からエージェント起動可能へ変える今回の変更は、起動契約の破壊的変更に当たる。既存の利用先に「各工程は手動起動のみ」という設定が残っていれば、その制限を保持する。自動続行へ移す場合は、利用者がその起動制限を置き換えると明示した上で `ains-setup` が該当する設定だけを更新する。再導入だけで既存方針を上書きせず、操作権限や無関係な設定も変えない。この変更による公開・タグ作成は行っていない。
 
 利用先の cwd で実行する。ローカルソースの内容を更新したら、上の絶対パスによる全スキル add を再実行する（コピー配置なら再び `--copy`）。リンク配置でもメタデータや配置の再確認に同じ手順を使う。CLI 1.7.4 の両配置方式で、一時ソースの変更が再追加後の利用先に反映されることを確認した。リモート更新の検出でローカル変更が反映されるとは保証しない。
 
