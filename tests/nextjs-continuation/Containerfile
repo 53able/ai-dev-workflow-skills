@@ -1,0 +1,15 @@
+# Rebuild recipe for the recorded dependency image. Resolve/record the resulting
+# image digest; a rebuild is a new image, not byte-identical proof of old runs.
+FROM node:24.13.1-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git openssh-client ripgrep python3 make g++ && rm -rf /var/lib/apt/lists/*
+RUN npm install --global @openai/codex@0.167.0 typescript@7.0.2 tsx@4.23.12 pino@10.3.1 pnpm@12.9.1
+WORKDIR /workspace
+COPY nextjs.tar.gz /tmp/nextjs.tar.gz
+RUN tar -xzf /tmp/nextjs.tar.gz -C /workspace && rm /tmp/nextjs.tar.gz
+ENV NEXT_TELEMETRY_DISABLED=1 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 CI=1
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter=next... build
+RUN useradd --create-home --shell /bin/bash agent && mkdir -p /evidence && chown -R agent:agent /workspace /evidence
+ENV HOME=/home/agent
+USER agent
+CMD ["bash"]
