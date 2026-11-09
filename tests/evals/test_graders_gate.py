@@ -219,17 +219,25 @@ class GateGraderTest(unittest.TestCase):
         self.only_failing([])
 
     # ains-review
-    def test_review_pass_when_nothing_changed(self):
+    def review_with_handoff(self):
         self.work('review')
+        self.write(f'docs/changes/{CID}/review-handoff.md', '独立レビュー未完了\n')
+
+    def test_review_pass_when_nothing_changed(self):
+        self.review_with_handoff()
         self.only_failing([])
 
-    def test_review_fail_when_code_fixed(self):
+    def test_review_fail_when_handoff_missing(self):
         self.work('review')
+        self.only_failing(['04-handoff-origin'])
+
+    def test_review_fail_when_code_fixed(self):
+        self.review_with_handoff()
         self.write('shop/pricing.py', '# fixed\n')
         self.only_failing(['01-no-code-or-record-change'])
 
     def test_review_fail_when_tasks_record_changed(self):
-        self.work('review')
+        self.review_with_handoff()
         p = self.workdir / f'docs/changes/{CID}/tasks.md'
         p.write_text(p.read_text() + '\nレビュー済み\n')
         self.only_failing(['01-no-code-or-record-change'])
