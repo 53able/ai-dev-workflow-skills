@@ -1,8 +1,10 @@
 ---
 name: ains-build
 description: tasks.md のタスクを1つずつテスト先行で実装し、Done when を確かめてチェックを付ける。
-disable-model-invocation: true
+disable-model-invocation: false
 ---
+
+最初に [実行範囲と工程の続行](../ains/workflow.md) を読み、今回の依頼が単独工程か一連の作業かを確かめる。以下の承認・停止条件を守り、一連の依頼では完了後に次へ進む。
 
 人が決めた範囲（spec.md の受入条件と対象外、Agent skills 節と tasks.md の任せる範囲）の中で、実装と修正を任される。その代わり、範囲と停止条件を守る。
 

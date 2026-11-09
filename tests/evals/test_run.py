@@ -64,9 +64,9 @@ class EvalTests(unittest.TestCase):
 
     def test_existing_cases_load(self):
         dirs = evallib.discover_cases()
-        # 11 original cases and 4 design-* cases; the 40 adversarial adv-* cases are counted in
+        # 11 original cases, 4 design-* and 5 workflow-* cases; the 40 adversarial adv-* cases are counted in
         # test_graders_adv_coverage.py.
-        self.assertEqual(len([d for d in dirs if not d.name.startswith('adv-')]), 15)
+        self.assertEqual(len([d for d in dirs if not d.name.startswith('adv-')]), 20)
         for d in dirs:
             evallib.load_case(d)
 

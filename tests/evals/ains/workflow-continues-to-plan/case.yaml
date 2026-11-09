@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: workflow-continues-to-plan
+expected_outcome: |
+  承認済みspecからtasks.mdをdraftで作り、計画全体の判断を求めて待つ。工程コマンドの入力や起動許可を求めず、仕様の再承認もしない。未承認の計画で実装しない。
+context:
+  scaffold_script: place-files.sh

@@ -27,6 +27,7 @@ jobs:
       - run: bash tests/scripts/test-debt-hotspots.sh
       - run: bash tests/route-review/test-route-review.sh
       - run: bash tests/evals/test-run.sh
+      - run: python3 -m unittest discover -s tests/nextjs-continuation -p 'test_*.py' -v
 
   release:
     needs: test

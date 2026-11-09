@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: workflow-standalone-stage
+expected_outcome: |
+  tasks.mdをdraftで作り計画承認を求める。仕様の再承認や工程の起動許可を求めず、実装や出荷へ広げない。
+context:
+  scaffold_script: place-files.sh

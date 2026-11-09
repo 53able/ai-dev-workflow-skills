@@ -1,8 +1,10 @@
 ---
 name: ains-tasks
 description: 承認済みの spec.md から、方針・任せる範囲・Done when 付きの縦の切り口タスクを持つ tasks.md を作り、計画の承認を得る。
-disable-model-invocation: true
+disable-model-invocation: false
 ---
+
+最初に [実行範囲と工程の続行](../ains/workflow.md) を読み、今回の依頼が単独工程か一連の作業かを確かめる。以下の承認・停止条件を守り、一連の依頼では完了後に次へ進む。
 
 spec の実現方法を、実装の前に人が確かめられる形にする。この段階ではコードを書かない。修正が最も安いのはここだ。
 
