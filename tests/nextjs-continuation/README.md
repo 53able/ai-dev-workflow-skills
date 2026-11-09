@@ -1,4 +1,15 @@
-# Bounded Next.js continuation experiment
+# Next.jsの固定ソースで工程の続行を検証する
+
+
+仕様承認後の続行、状態確認、未承認での停止、単独の実装工程を確かめる開発用の実験です。通常の導入は[利用ガイド](../../docs/getting-started.md)、実測結果は[検証レポート](../../outputs/apple-container-validation-ains-nextjs.md)を参照してください。
+
+モデルやコンテナを起動せず、補助処理の単体検査だけを実行する場合は、リポジトリのルートで次を実行します。Python 3が必要です。
+
+```sh
+python3 -m unittest discover -s tests/nextjs-continuation -p 'test_*.py' -v
+```
+
+`OK` と終了コード0を確認してください。以下の実験再現は Apple Container、固定入力、製品認証が必要で、モデル使用料・実行時間を伴います。既存の出力先を使い回さず、新しいワークスペースで実行します。
 
 These fixtures test ains continuation on the selected Next.js commit. The
 apostrophe-matching fault is deliberately seeded into existing framework source;

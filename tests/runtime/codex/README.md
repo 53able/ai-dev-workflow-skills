@@ -1,4 +1,13 @@
-# Bounded Codex runtime evidence
+# Codexの実製品検証：確認済みの範囲と再現条件
+
+固定版・設定済みローカル環境での Codex 検証記録です。通常の導入にはこのハーネスは不要です。[互換性と現在の確認範囲](../../../docs/compatibility.md)から利用可否を判断してください。
+
+記録済みの限定行列は10対照・165イベントの独立監査を通っています。一方、元の仕様対話は「1回に1判断」のペースに失敗しています。起動の確認を、質問・全体ワークフロー・全環境の成功に広げないでください。
+
+再検証には Python 標準ライブラリ、codex、git、npx と既存の安全な認証を使います。以下の固定名コマンドは過去のソース向けで、現行の合意記録へ変更した Canvas の検証には使えません。新しい出力先と対象ソースを決め、既存の証拠を保持してから実行します。
+
+<details>
+<summary>当時の実行コマンド・観測方法・制約</summary>
 
 Python standard library and installed `codex`, `git`, `npx` only. Uses secure existing host auth; never copies auth/config, changes global settings, or writes outside the assigned harness/evidence and its own temporary consumers. Model calls use actual installed skills and have 180-second process/turn bounds. Reviewers are separate real sessions. Synthetic fixture decisions are separate USER inputs.
 
@@ -40,3 +49,5 @@ Privately retained `REPORT-r2.md` maps completed behavior. The initial `REPORT-r
 Completed behavior checks cover migration mitigations, save-I/O draft criteria, authority-preserving setup, approved workflow, scoped red/green, seven independent-review tests, local ship and scope invalidation. **The original spec interaction still failed one-question pacing**, despite setup's successful one-question pauses. This observer matrix does not rerun questions or whole-workflow cases for the new boundary policy. No new question/full-workflow PASS follows.
 
 Scope is fresh ordinary localhost execution under the **recorded constrained configuration**, retaining authentication and home skill discovery while disabling relevant hooks/plugins/MCP/contributors. It is not unrestricted normal-host, remote-executor, other-version/OS or universal suppression support. “Default” names an installer option, not an additional physical Codex symlink layout. Claude's current direct-read/helper FAIL, incomplete slash/effective-input observation and unrun positive/setup matrices keep combined formal support blocked. See [current compatibility findings](../../../docs/compatibility.md). No additional model replay is required to establish this finite audit result. Detailed evidence remains private; do not overwrite or publish raw transcripts.
+
+</details>

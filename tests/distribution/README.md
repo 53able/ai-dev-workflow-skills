@@ -1,22 +1,46 @@
-# Distribution regression tests
+# 配布先に必要な16スキルが揃うか確認する
 
-Run from any cwd using absolute runner paths, or from the repository root:
+スキルの導入・更新方法を変更したときに使う開発用検査です。Claude Code 単独、Codex 単独、両製品への導入を、通常のリンク配置とコピー配置で確認します。製品のモデルは起動しません。
+
+## 前提と実行
+
+bash、git、uv（Python 3.11以降）、Node.js、npm/npx が必要です。固定した skills CLI 1.7.4 をキャッシュから使うか、ダウンロードできる環境で実行してください。リポジトリのルートで次を実行します。
+
+```sh
+bash tests/distribution/test-distribution.sh
+```
+
+`failed=0` と終了コード0を確認します。失敗した項目は出力に `FAIL` と理由が表示されます。メタデータだけを調べる場合とログを保存する場合は、次のオプションを使えます。
+
+```sh
+bash tests/distribution/test-distribution.sh --static-only
+bash tests/distribution/test-distribution.sh --log-dir /absolute/path/to/new-log-directory
+```
+
+絶対パスでランナーを指定すれば、別の作業ディレクトリからも実行できます。検査は一時プロジェクトにのみ導入し、終了時に自身の一時領域を削除します。子プロセスの HOME・設定は分離し、既存の npm キャッシュを再利用します。グローバル導入は行いません。
+
+## 何を検査するか
+
+- 16スキルの名前、起動方針、実行時に必要なファイル
+- インストール後のスクリプトの実行、雛形出力、実行権限
+- スキル内・隣接スキルへの Markdown リンク
+- 開発用の評価ケース・採点器・fixture が配布されないこと
+- 空白を含むパスと、製品ごとの起動設定
+
+期待する一覧は `intended-skills.json` にあります。明示起動の入口と4補助工程、エージェントが呼べる主要5工程、必要に応じて使う6規律を区別しています。発見したファイルから期待値を生成すると、意図しない削除や区分変更を見逃すため、この一覧は独立して維持します。起動可能という設定は、操作の許可や仕様・計画の承認を与えません。
+
+メタデータの検査は `check_distribution.py` が定める範囲だけを解析します。先頭の front matter と Codex の `policy.allow_implicit_invocation` が対象です。未対応の書式や重複はエラーになり、一般的な YAML 全体の検証は行いません。
+
+`--eval-inventory <original-eval-inventory.json>` を付けると、移動前に保存した非公開の一覧と、`tests/evals/<skill>/` のファイル集合・ハッシュ・モードも照合します。
+
+## 関連するスクリプト検査
 
 ```sh
 bash tests/route-review/test-route-review.sh
 bash tests/scripts/test-status.sh
 bash tests/scripts/test-new-change.sh
-bash tests/distribution/test-distribution.sh
 ```
 
-Requires bash, uv (Python 3.11+ stdlib via `uv run`), git, Node/npm/npx and access to the pinned skills CLI 1.7.4 package (cached or downloadable). No repository dependency is added. The distribution runner installs only into fresh temporary projects, tests Claude Code alone, Codex alone and both together, each in symlink and `--copy` mode, and removes its own temp roots. Child HOME/config settings are isolated; the existing npm package cache is reused. It never invokes either product's model runtime or installs globally.
+これらも使い捨て fixture と利用先の作業ディレクトリを使います。`STATUS_SCRIPT` と `NEW_CHANGE_SCRIPT` を指定すると、導入済みのスクリプトを検査できます。
 
-`--static-only` skips the CLI matrix. `--log-dir <directory>` retains CLI output and exit codes. `--eval-inventory <original-eval-inventory.json>` additionally verifies the exact migrated file set, hashes and modes under `tests/evals/<skill>/`. The original eval inventory records the pre-move files and is retained privately.
-
-`intended-skills.json` is the independently specified design inventory: five explicit-only stages, five agent-callable core stages, six automatic disciplines and required runtime resources. The `manual` inventory contains the explicit coordinator and retro/team-canvas/harness/tool-access; `automatic` contains setup/spec/tasks/build/ship and the six disciplines. Callable metadata does not authorize work or replace user approvals. A deliberate architecture change must update this reviewed contract; deriving expectations solely from discovered files would miss accidental deletion or reclassification.
-
-Metadata checks parse only the owned subset documented in `check_distribution.py`: first-line frontmatter and the exact Codex `policy.allow_implicit_invocation` block. Unsupported or duplicate policy syntax fails with an explicit error. Parser fixtures prove that body text, comments and another section's similarly named property cannot satisfy the control. This is not a general YAML parser.
-
-The shell-script suites use disposable fixtures and unrelated consumer cwd. `STATUS_SCRIPT` and `NEW_CHANGE_SCRIPT` can point to installed scripts. The distribution matrix directly executes installed new-change and status scripts, compares template output, checks runtime/sibling Markdown links and executable bits, and rejects shipped development fixtures. Mechanical checks do not establish actual runtime support, independent review or activation provenance.
-
-Regression assertions cover paths with spaces, exact manual-stage adapters and fixture exclusion. Keep these checks intact.
+配布検査の成功が証明するのは、配置と静的契約です。製品上での起動、独立レビュー、承認待ちなどの振る舞いは、[実製品の確認範囲](../../docs/compatibility.md)で別に確認してください。
