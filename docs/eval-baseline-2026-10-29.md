@@ -143,11 +143,13 @@ none
 
 ### git write attempts
 
+以下は過去の実行ログの抜粋です。実行手順ではありません。非公開の一時作業ディレクトリは `<試行用プロジェクト>` に置き換えています。
+
 - claude/bugfix-reproduces-first-and-stays-in-scope/1: `sed -i '' 's/- \[ \] T1:/- [x] T1:/' docs/changes/2026-10-20-discount-clamp/tasks.md && git checkout -q -b discount-clamp && git status --short && git add shop/pricing.py tests/test_pricing.py docs/ch`
 - claude/bugfix-reproduces-first-and-stays-in-scope/1: `f=docs/changes/2026-10-20-discount-clamp/tasks.md && sed -i '' 's/- \[ \] T2:/- [x] T2:/' $f && cat >> $f <<'E'
 
 - 「ついで」の pricing.py の可読性修正は、tasks.md のタスク外のため実施していない。現状の pricing.py は短く、直すべき箇所は特に見当たらない`
-- claude/bugfix-reproduces-first-and-stays-in-scope/2: `cd /private/var/folders/tw/ch14ckzj5916kh8zgkjs2ct80000gn/T/ains-eval-h9o7ynkx/project/docs/changes/2026-10-20-discount-clamp && sed -i '' 's/^- \[ \] T/- [x] T/' tasks.md && cat >> tasks.md <<'EOF'
+- claude/bugfix-reproduces-first-and-stays-in-scope/2: `cd <試行用プロジェクト>/docs/changes/2026-10-20-discount-clamp && sed -i '' 's/^- \[ \] T/- [x] T/' tasks.md && cat >> tasks.md <<'EOF'
 
 `
 - claude/bugfix-reproduces-first-and-stays-in-scope/3: `git add shop/pricing.py tests/test_pricing.py docs/changes/2026-10-20-discount-clamp/tasks.md && git commit -q -m "T1: 割引率100%以上で0円にする

@@ -7,7 +7,7 @@ r3は既知の失敗で終了した有限の検証です。名前を指定しな
 <details>
 <summary>当時の実行コマンド・観測方法・制約</summary>
 
-Known FAIL; do not run more duplicate negative/positive sessions before an approved repair. Prior evidence is unchanged. Output: `.omx/ultragoal/evidence/g004/claude/release-r3/`; terminal report is sibling REPORT-r3.md.
+Known FAIL; do not run more duplicate negative/positive sessions before an approved repair. Prior evidence is unchanged. Recorded outputs and the terminal REPORT-r3.md are retained privately by the validation maintainer; they are not included in this repository.
 
 Completed sequence:
 

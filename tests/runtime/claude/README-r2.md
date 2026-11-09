@@ -19,7 +19,7 @@ python3 tests/runtime/claude/release_r2_workflow.py
 python3 tests/runtime/claude/release_r2_audit.py
 ```
 
-The first four commands launch actual models/installations; the last is read-only deterministic evidence auditing. Output is isolated in `.omx/ultragoal/evidence/g004/claude/release-r2/`. `REPORT-r2.md` sits beside the preserved r1 report. Replaying bootstrap intentionally creates a new installation; do not overwrite this completed evidence when resuming a future release—select a new output root first.
+The first four commands launch actual models/installations; the last is read-only deterministic evidence auditing. The historical outputs, including REPORT-r2.md and the preserved r1 report, are retained privately by the validation maintainer and are not included in this repository. Replaying bootstrap intentionally creates a new installation; do not overwrite this completed evidence when resuming a future release—select a new output root first.
 
 `r2_runtime.py` adds controlled USER stdin, all sanitized stdout JSON events, per-input contributor state, full Skill body/path observations and loader-debug facts to the dependency-free r1 approach. Normal host auth is retained; credentials/global config are never copied. Each model turn is limited to 180 seconds; only own process groups can be terminated. Source is read-only input. Actual AC9 commits/reverts/restoration are separately authorized only by a distinct synthetic USER input inside a disposable consumer. No production consent is inferred.
 

@@ -45,7 +45,7 @@
 - 総試行は 292（上限 300）
 - CLI: Claude Code 2.1.316（被験 claude-sonnet-5-5）、codex-cli 0.166.0（被験 gpt-6.1-sol）。採点モデルは claude-sonnet-5-5
 - Codex は `max_turns` と `allowed_tools` を受け取れない。Codex の `-s workspace-write` は `.git` に書き込めない
-- extra の4つは、A' と B を別々に checkout した作業コピー（`/tmp/sdai-wt-A`、`/tmp/sdai-wt-B`）の `ains-workspace/` に出力した。他は作業コピーの `ains-workspace/` にある
+- extra の4つは、A' と B を別々に checkout した作業コピー（A'用・B用）の `ains-workspace/` に出力した。他は作業コピーの `ains-workspace/` にある
 - summary.md には対象コミットの欄が無い。コミットは実行の順序と時刻（summary.md の date とコミットの時刻）で対応づけた。smoke の date（01:26）は c70e307 のコミット（01:31）より前で、コミット前の同じ内容の作業ツリーで実行した
 - error は3件。sdai-after-reg の Claude Code の bugfix-reproduces-first-and-stays-in-scope 試行1（grader 07 の `llm call failed`、採点側の認証エラー）、同じ run の Codex の adv-c-build-no-test-command 試行2（grader 02 の `invalid grader output`）、sdai-after3 の試行2（grader 02 の `invalid grader output`）。どれも採点側の失敗で、被験の試行は完了している
 
@@ -182,9 +182,9 @@ build の本文に足した停止行（AGENTS.md・ADR や tasks.md の方針の
 - Codex の制約: `.git` に書き込めない（コミットしない系の判定は何もしなくても合格する）、`max_turns` と `allowed_tools` を受け取れない、サブエージェントの起動を観測できない（review は測定不能）
 - B' と B'' の本文は、既存ケースと Codex では測っていない
 - 採点側の error が3件ある（上の「計測」）。どれも分母から除かずに表に載せた
-- B、B'、B'' は計測後に履歴を書き換えた。参照ファイル3つの末尾の行（空行を含めて各2行）を消しただけで、計測した本文とはこの6行だけが違う。計測時のコミットは 812ef10、208ae26、8e92e74 で、`/tmp/sdai-wt-B` などの計測データにはこの SHA が残る
+- B、B'、B'' は計測後に履歴を書き換えた。参照ファイル3つの末尾の行（空行を含めて各2行）を消しただけで、計測した本文とはこの6行だけが違う。計測時のコミットは 812ef10、208ae26、8e92e74 で、当時のB用作業コピーの計測データにはこの SHA が残る
 - 計測の後、PR のレビュー対応で参照ファイルを2つ直した。design-rules.md は、並行タスクの依存に design rule を定義するタスクを残す書き方にした。debt-hotspots.md は、修正のコミットの集計が直近 100 コミットより古い修正まで数えていたので、どの集計もマージを除く直近 100 コミットの中だけを数えるようにした。どちらの変更後も、新しいケース・既存ケースともに測っていない
 
-各試行の記録は `ains-workspace/<run-id>/<product>/<case>/<trial>/`（extra の4つは `/tmp/sdai-wt-A/ains-workspace/`、`/tmp/sdai-wt-B/ains-workspace/`。リポジトリ外の作業領域。コミットしていない）。
+各試行の記録は `ains-workspace/<run-id>/<product>/<case>/<trial>/`という形式で検証担当者が非公開で保持しています。extra の4つはA'用・B用の別作業コピーに保存しました。いずれも本リポジトリには同梱していません。
 
 </details>
