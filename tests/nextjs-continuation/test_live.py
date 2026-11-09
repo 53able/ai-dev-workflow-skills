@@ -13,6 +13,10 @@ spec = importlib.util.spec_from_file_location('live', Path(__file__).with_name('
 live = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(live)
 
+# The status string the real capture() reports for a completed container run.
+with patch.object(live.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, b'', b'')):
+    OBSERVED = live.capture(['fake'], env={}, name='status-probe')[1]['status']
+
 
 class LiveEvidenceTests(unittest.TestCase):
     def test_success_captures_both_streams(self):
@@ -172,6 +176,74 @@ class LiveEvidenceTests(unittest.TestCase):
             self.assertEqual((root/'live/fake/events.sanitized.log').read_text(),'partial ')
             self.assertEqual(outside.read_text(),'unchanged runtime-secret')
             self.assertEqual(outside.stat().st_mode & 0o777,0o644)
+
+    def run_main_with(self, root, fake_capture):
+        (root/'input-live-v4/candidate/skills').mkdir(parents=True, exist_ok=True)
+        argv=['live.py',str(root),'--product','claude','--bundle','candidate','--scenario','status','--run-id','fake']
+        with patch.object(sys,'argv',argv), patch.dict(live.os.environ,{'CLAUDE_CODE_OAUTH_TOKEN':'runtime-secret'}), patch.object(live,'capture',side_effect=fake_capture), patch.object(live,'image_digest',return_value='fake-digest'), contextlib.redirect_stdout(io.StringIO()):
+            code=live.main()
+        return code, __import__('json').loads((root/'live/fake/result.json').read_text())
+
+    def test_wrapper_propagates_collector_failure_after_agent_success(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            seen={}
+            def fake_capture(argv, **kwargs):
+                seen['wrapper']=argv[argv.index('-c')+1]
+                return b'event', {'exitCode':0,'status':'observed'}
+            self.run_main_with(root, fake_capture)
+            fake_case=root/'fake_case.py'
+            fake_case.write_text('import sys\nsys.exit(23 if sys.argv[1] == "collect" else 0)\n')
+            wrapper=seen['wrapper'].replace('/tmp/ains-claude/node_modules/.bin/claude --version','true').replace('env -u CLAUDE_CODE_OAUTH_TOKEN npm install','true').replace('/inputs/container_case.py',str(fake_case))
+            for agent, expected in (('true', live.COLLECT_FAILED_EXIT), ('false', live.COLLECT_FAILED_EXIT)):
+                result=subprocess.run(['sh','-c',wrapper,'ains-live',agent],capture_output=True)
+                self.assertEqual(result.returncode, expected)
+            fake_case.write_text('import sys\nsys.exit(0)\n')
+            self.assertEqual(subprocess.run(['sh','-c',wrapper,'ains-live','true']).returncode, 0)
+            self.assertEqual(subprocess.run(['sh','-c',wrapper,'ains-live','sh','-c','exit 5']).returncode, 5)
+            # Preflight/setup failures keep their own code and never run the collector.
+            marker=root/'collected'
+            for failing, code in (('auth-preflight', 7), ('setup-live', 9)):
+                marker.unlink(missing_ok=True)
+                fake_case.write_text(f'import sys, pathlib\nif sys.argv[1] == "collect": pathlib.Path({str(marker)!r}).touch()\nsys.exit({code} if sys.argv[1] == {failing!r} else 0)\n')
+                self.assertEqual(subprocess.run(['sh','-c',wrapper,'ains-live','true']).returncode, code)
+                self.assertFalse(marker.exists())
+
+    def test_collector_failure_exit_is_classified_and_nonzero(self):
+        with tempfile.TemporaryDirectory() as temp:
+            code, result = self.run_main_with(Path(temp), lambda argv, **kwargs: (b'event', {'exitCode':live.COLLECT_FAILED_EXIT,'status':OBSERVED}))
+            self.assertEqual(code,1)
+            self.assertEqual(result['failureCode'],'evidence-collection-failed')
+            self.assertEqual(result['evidenceCollection'],'incomplete')
+            self.assertEqual(result['status'],'blocked')
+
+    def test_timeout_and_setup_failure_are_not_relabelled_as_collection_failure(self):
+        for meta in ({'status':'timeout','timeoutSeconds':240,'cleanup':'removed'}, {'exitCode':9,'status':OBSERVED}):
+            with self.subTest(meta=meta), tempfile.TemporaryDirectory() as temp:
+                code, result = self.run_main_with(Path(temp), lambda argv, **kwargs: (b'event', dict(meta)))
+                self.assertEqual(code,1)
+                self.assertNotIn('failureCode', result)
+                self.assertEqual(result['status'], meta['status'])
+                self.assertEqual(result['evidenceCollection'],'incomplete')
+
+    def test_missing_collected_evidence_after_agent_success_is_nonzero(self):
+        with tempfile.TemporaryDirectory() as temp:
+            code, result = self.run_main_with(Path(temp), lambda argv, **kwargs: (b'event', {'exitCode':0,'status':OBSERVED}))
+            self.assertEqual(code,1)
+            self.assertEqual(result['failureCode'],'evidence-collection-failed')
+            self.assertEqual(result['status'],'blocked')
+
+    def test_complete_collection_with_agent_success_returns_zero(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            def fake_capture(argv, **kwargs):
+                for name in live.COLLECTED_EVIDENCE:
+                    (root/'live/fake'/name).write_text('{}')
+                return b'event', {'exitCode':0,'status':OBSERVED}
+            code, result = self.run_main_with(root, fake_capture)
+            self.assertEqual(code,0)
+            self.assertEqual(result['evidenceCollection'],'complete')
+            self.assertNotIn('failureCode', result)
 
     def test_symlink_evidence_rejected(self):
         with tempfile.TemporaryDirectory() as temp:

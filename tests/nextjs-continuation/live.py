@@ -19,6 +19,10 @@ import tempfile
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
+# Reserved wrapper exit for a failed evidence collector. An agent that exits with
+# the same value is also treated as a collection failure (fails closed).
+COLLECT_FAILED_EXIT = 86
+COLLECTED_EVIDENCE = ('consumer-preservation.json', 'postcheck.json')
 
 
 class AuthenticationUnavailable(RuntimeError):
@@ -186,7 +190,7 @@ def main():
         # No secret appears in argv or the public launch manifest.
         install = '' if args.product == 'codex' else 'env -u CLAUDE_CODE_OAUTH_TOKEN npm install --prefix /tmp/ains-claude --no-audit --no-fund @anthropic-ai/claude-code@2.1.319 && /tmp/ains-claude/node_modules/.bin/claude --version && '
         preflight = install + 'python3 /inputs/container_case.py auth-preflight --product ' + args.product + ' && '
-        wrapper = preflight + 'python3 /inputs/container_case.py setup-live --bundle ' + args.bundle + ' --scenario ' + args.scenario + ' && "$@"; code=$?; python3 /inputs/container_case.py collect; exit $code'
+        wrapper = preflight + 'python3 /inputs/container_case.py setup-live --bundle ' + args.bundle + ' --scenario ' + args.scenario + ' && { "$@"; code=$?; python3 /inputs/container_case.py collect || { echo "ains-collect-failed agent-exit=$code" >&2; exit ' + str(COLLECT_FAILED_EXIT) + '; }; exit $code; }'
         argv = ['container', 'run', '--rm', '--name', container_name, '--cpus', '2', '--memory', '3G', *mounts, *envargs, args.image, 'sh', '-c', wrapper, 'ains-live', *command]
         public['cliArgv'] = command
         public['runtimeInstall'] = install or 'none (image-pinned CLI)'
@@ -208,11 +212,21 @@ def main():
         result_meta['redactedArtifacts'] = altered
         if altered:
             result_meta['adjudication'] = 'oracle-fail: secret detected in artifact'
+        exit_code = result_meta.get('exitCode')
+        files_present = all((out/name).is_file() and not (out/name).is_symlink() for name in COLLECTED_EVIDENCE)
+        collected = exit_code != COLLECT_FAILED_EXIT and files_present
+        result_meta['evidenceCollection'] = 'complete' if collected else 'incomplete'
+        # Attribute the failure to collection only when it is the cause: the reserved
+        # collector exit, or an otherwise successful run without its evidence. Timeouts
+        # and preflight/setup/agent failures keep their own status and exit code.
+        if exit_code == COLLECT_FAILED_EXIT or (exit_code == 0 and not files_present):
+            result_meta['failureCode'] = 'evidence-collection-failed'
+            result_meta['status'] = 'blocked'
         payload = json.dumps(result_meta, indent=2).encode() + b'\n'
         publish(out/'result.json', redact(payload, secrets))
         diagnostic = json.dumps({'run': str(out), **result_meta}).encode()
         print(redact(diagnostic, secrets).decode())
-        return 0 if result_meta.get('exitCode') == 0 and not altered else 1
+        return 0 if result_meta.get('exitCode') == 0 and collected and not altered else 1
     except (RuntimeError, OSError, subprocess.SubprocessError, ValueError) as error:
         if isinstance(error, AuthenticationUnavailable):
             code = 'authentication-unavailable'
