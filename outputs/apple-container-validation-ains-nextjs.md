@@ -1,4 +1,17 @@
-# Apple Container検証レポート: The pinned Next&#46;js seeded fixture distinguishes broken apostrophe matching from restored behavior&#46;
+# Next.jsの小さな修正で ains の続行を確かめる
+
+固定した Next.js ソースに意図的な不具合を入れ、テストが検出できることと、ains が承認済みの作業をどこまで続けられるかを確認しました。上流の Next.js の不具合報告ではありません。
+
+利用者が確認すべき結果は次の3点です。
+
+- 状態確認と未承認の仕様では、両製品とも実装せず停止しました。
+- 承認済みの修正では RED→GREEN を観測しました。ただし、レビューの実行元と結果を確認し、判定不能の gate は人へ戻す必要があります。
+- 起動契約の整理によって待ちが減るとは限りません。初見利用者の使いやすさ、一般の Next.js 変更、全環境での成功は未検証です。
+
+導入は [README](../README.md)、この実験を再現する場合は[検証手順](../tests/nextjs-continuation/README.md#exact-reproduction)へ進んでください。以下は固定版・有限試行の実測記録です。
+
+<details>
+<summary>環境・ジョブ別の結果・失敗・再現用の証拠を確認する</summary>
 
 標準行列は、固定Next.jsへの意図的な故障を回帰テストで検出できることを確認した。ainsの実行挙動は後半の両製品の実測として別に評価しており、全環境の保証や待ち回数の削減を意味しない。
 
@@ -66,11 +79,7 @@ attempt別ログを照合した結果、正常ソースは3テスト成功、故
 
 ## 再実行
 
-```bash
-python3 /Users/oreore/.agents/skills/apple-container-validation/scripts/run-matrix.py .omx/validation/ains-nextjs/base-manifest.json --run-id matrix-replay-02 --results-dir .omx/validation/ains-nextjs/results --concurrency 1
-```
-
-同じrun-idが既にある場合は新しい識別子を指定する。新しい環境での固定入力の生成とimage再構築は、後半の再実行節から検証READMEの完全な手順を参照する。
+[検証READMEの再現手順](../tests/nextjs-continuation/README.md#exact-reproduction)に従い、新しい入力と出力先を生成してください。外部スキルの導入先は利用者の環境で指定します。過去の実行に用いた非公開ファイルは、このリポジトリには含まれません。
 
 ## 証跡
 
@@ -189,37 +198,19 @@ python3 /Users/oreore/.agents/skills/apple-container-validation/scripts/run-matr
 
 新しいワークスペースのbootstrap・固定source/hash生成・image再構築・manifest検証・dry-run・smoke・matrix・live実行の正確な手順は [検証README](../tests/nextjs-continuation/README.md#exact-reproduction) を参照する。現在のcandidateを再コピーしたrunは、新しいsourceとして扱う。新規のimage再構築レシピ自体はこの変更では再実行していない。
 
-- [標準matrix summary](../.omx/validation/ains-nextjs/results/matrix-base-20261108-e/summary.json)
-- [標準matrixの全ジョブとattempt別生ログ](../.omx/validation/ains-nextjs/results/matrix-base-20261108-e/jobs/)
-- [liveのsanitized events・コピーされた変更・前後inventory](../.omx/validation/ains-nextjs/live/)
-- [判定メモ](../.omx/validation/ains-nextjs/manual-adjudication.json)
-- [system log照合メモ](../.omx/validation/ains-nextjs/system-log-attestation.json)
+標準行列の集約・全ジョブの生ログ、実製品のイベント・変更ファイル・前後比較、手動判定とsystem logの照合記録は、検証担当者の非公開領域に保存しています。このリポジトリには同梱していません。確認が必要な場合は、検証担当者から共有可能な成果物を受け取ってください。
 
-上記の `.omx` 証拠はこのローカル作業環境に保持し、Gitには含めない。標準summaryと世代別reportのSHA-256連結を確認してから、この利用者向けコピーを作成した。元の世代別reportを編集していない。
-
-```sh
-python3 - <<'PY'
-from pathlib import Path
-import hashlib, json
-root = Path('.omx/validation/ains-nextjs/results/matrix-base-20261108-e')
-summary = json.loads((root / 'summary.json').read_text())
-artifact = summary['reportArtifact']
-report = root / artifact['path']
-assert report.parent == root
-assert hashlib.sha256(report.read_bytes()).hexdigest() == artifact['sha256']
-print('summary/report pair verified')
-PY
-```
+公開レポートの作成時には、集約データに記録されたレポートのSHA-256と実ファイルを照合しました。元の世代別レポートは編集していません。公開文書だけで生ログを再監査できるという意味ではありません。
 
 ## スキル・検証補助コードの確認
 
-- 既存eval全体: `205 tests`、`346.615s`、成功。記録: `.omx/plans/core-evals-final.log`。
-- その後のレビュー元grader修正: 2テスト成功、配布静的検査 `failed=0`。記録: `.omx/plans/review-origin-quotation-green.txt`。引用・否定の文章を誤って不合格にした旧失敗を別ログに保持した。
+- 既存eval全体: `205 tests`、`346.615s`、成功。実行ログは非公開です。
+- その後のレビュー元grader修正: 2テスト成功、配布静的検査 `failed=0`。実行ログは非公開です。引用・否定の文章を誤って不合格にした旧失敗を別ログに保持した。
 - custom live launcher: 11テスト成功。偽CLI成功/timeout/cleanup失敗、短い値も含む固定点削除、認証更新前後、秘密を含むpathと標準出力、symlink越しのホストmode変更防止、別reviewer cacheとnative無効化flagsを確認した。構文検査も成功した。
 - 診断への秘密を含むpath出力、symlink先へのchmod、予約出力symlink、失敗分類、cleanup失敗後のwalkの問題は、偽credentialで再現して修正した後、独立レビューで解消を確認した。これらは偽credential・一時ファイルによる再現であり、実token漏えいや実ホストファイル改変の観測ではない。
 - sourceの独立コードレビューはAPPROVE、architectureはCLEAR。これらはスキル本文の確認であり、Codex実行中のレビュー呼出しを証明するものではない。
 
-機械可読の集約は [verification.json](../.omx/validation/ains-nextjs/verification.json) に保持する。待ち回数の改善や全目標の達成を、コード検査の成功から推測しない。
+機械可読の検証集約も非公開領域に保持しています。待ち回数の改善や全目標の達成を、コード検査の成功から推測しない。
 
 ## Codex v5 の独立CLIレビューと最終補助処理
 
@@ -237,4 +228,6 @@ python3 tests/nextjs-continuation/live.py .omx/validation/ains-nextjs-replay --i
 
 最終wrapperの失敗処理は、各認証・証拠検証・実行エラーを安全な固定コードで区別し、sanitized captureとmetadataを保存して非0終了する。予約されたresult/events/launchは排他的な一時ファイルからの置換で保存し、symlink先を上書きしない。cleanup失敗時はartifactを一切walk・sanitize・chmodせず、私有証拠をquarantineとして残し、停止が必要な正確なコンテナ名を記録する。これらは11件の偽CLI回帰で確認した。
 
-v5実行は、そのrunに保存した当時の `launcher.py` bytesを使った。後から修正した失敗時の保護処理を、過去のlive実行で通ったことにはしていない。product入力は同一であり、最終wrapperの失敗分岐は別の回帰テストと独立ソースレビューで確認した。[cleanup点検記録](../.omx/plans/validation-cleanup.md)に分類と残る限界を記載した。
+v5実行は、そのrunに保存した当時の `launcher.py` bytesを使った。後から修正した失敗時の保護処理を、過去のlive実行で通ったことにはしていない。product入力は同一であり、最終wrapperの失敗分岐は別の回帰テストと独立ソースレビューで確認した。非公開のcleanup点検記録に分類と残る限界を記載した。
+
+</details>

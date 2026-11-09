@@ -1,4 +1,16 @@
-# eval 設計規則の知見を足した前後（2026-11-02）
+# 設計規則を守らせる効果と残る課題（2026-11-02）
+
+境界・公開インターフェース・依存方向・不変条件を扱う手順を追加し、新規4ケースと既存25ケースを測りました。全292試行の記録です。
+
+- 振り返りで履歴から変更の集中箇所を選ぶケースは、両製品で改善しました。
+- Claude Code の設計計画と規則違反時の停止は、設定した合格条件に届いていません。
+- 独立レビューの追加効果は Claude Code では識別できず、Codex では測定不能でした。
+- 既存ケースは定めた回帰判定を通りましたが、各3試行のため小さな低下は検出できません。
+
+利用時は、計画に境界・変えないインターフェース・人が決める設計判断が具体名で書かれているかを確認してください。この評価は現行版全体の動作保証ではありません。[現在の確認範囲](compatibility.md)も参照してください。
+
+<details>
+<summary>計測条件・全結果・失敗と限界を確認する</summary>
 
 `ains-tasks`・`ains-build`・`ains-tdd`・`ains-review`・`ains-retro` に、設計規則（境界、公開 interface、依存方向、不変条件）を AI に守らせる知見を足した。その前後で、新しい4ケースの合格率と、本文を変えたスキルの既存25ケースの合格率を比べた。
 
@@ -33,7 +45,7 @@
 - 総試行は 292（上限 300）
 - CLI: Claude Code 2.1.316（被験 claude-sonnet-5-5）、codex-cli 0.166.0（被験 gpt-6.1-sol）。採点モデルは claude-sonnet-5-5
 - Codex は `max_turns` と `allowed_tools` を受け取れない。Codex の `-s workspace-write` は `.git` に書き込めない
-- extra の4つは、A' と B を別々に checkout した作業コピー（`/tmp/sdai-wt-A`、`/tmp/sdai-wt-B`）の `ains-workspace/` に出力した。他は作業コピーの `ains-workspace/` にある
+- extra の4つは、A' と B を別々に checkout した作業コピー（A'用・B用）の `ains-workspace/` に出力した。他は作業コピーの `ains-workspace/` にある
 - summary.md には対象コミットの欄が無い。コミットは実行の順序と時刻（summary.md の date とコミットの時刻）で対応づけた。smoke の date（01:26）は c70e307 のコミット（01:31）より前で、コミット前の同じ内容の作業ツリーで実行した
 - error は3件。sdai-after-reg の Claude Code の bugfix-reproduces-first-and-stays-in-scope 試行1（grader 07 の `llm call failed`、採点側の認証エラー）、同じ run の Codex の adv-c-build-no-test-command 試行2（grader 02 の `invalid grader output`）、sdai-after3 の試行2（grader 02 の `invalid grader output`）。どれも採点側の失敗で、被験の試行は完了している
 
@@ -170,7 +182,9 @@ build の本文に足した停止行（AGENTS.md・ADR や tasks.md の方針の
 - Codex の制約: `.git` に書き込めない（コミットしない系の判定は何もしなくても合格する）、`max_turns` と `allowed_tools` を受け取れない、サブエージェントの起動を観測できない（review は測定不能）
 - B' と B'' の本文は、既存ケースと Codex では測っていない
 - 採点側の error が3件ある（上の「計測」）。どれも分母から除かずに表に載せた
-- B、B'、B'' は計測後に履歴を書き換えた。参照ファイル3つの末尾の行（空行を含めて各2行）を消しただけで、計測した本文とはこの6行だけが違う。計測時のコミットは 812ef10、208ae26、8e92e74 で、`/tmp/sdai-wt-B` などの計測データにはこの SHA が残る
+- B、B'、B'' は計測後に履歴を書き換えた。参照ファイル3つの末尾の行（空行を含めて各2行）を消しただけで、計測した本文とはこの6行だけが違う。計測時のコミットは 812ef10、208ae26、8e92e74 で、当時のB用作業コピーの計測データにはこの SHA が残る
 - 計測の後、PR のレビュー対応で参照ファイルを2つ直した。design-rules.md は、並行タスクの依存に design rule を定義するタスクを残す書き方にした。debt-hotspots.md は、修正のコミットの集計が直近 100 コミットより古い修正まで数えていたので、どの集計もマージを除く直近 100 コミットの中だけを数えるようにした。どちらの変更後も、新しいケース・既存ケースともに測っていない
 
-各試行の記録は `ains-workspace/<run-id>/<product>/<case>/<trial>/`（extra の4つは `/tmp/sdai-wt-A/ains-workspace/`、`/tmp/sdai-wt-B/ains-workspace/`。リポジトリ外の作業領域。コミットしていない）。
+各試行の記録は `ains-workspace/<run-id>/<product>/<case>/<trial>/`という形式で検証担当者が非公開で保持しています。extra の4つはA'用・B用の別作業コピーに保存しました。いずれも本リポジトリには同梱していません。
+
+</details>

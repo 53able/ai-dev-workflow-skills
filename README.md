@@ -1,164 +1,156 @@
 <img src="assets/icon.svg" width="64" height="64" alt="">
 
-# AI-Native 開発ワークフロー スキル群
+# ains — AIと進める開発ワークフロー
 
-AIを使った開発が初めてなら、[小さな変更を通して試す](docs/getting-started.md)から始める。Git・ターミナルと製品の導入・認証ができる開発者向け。
+**何を作り、何を変えず、何をもって完成とするかを決めてから、実装をAIに任せる。** Claude Code / Codex 向けの16スキルです。仕様、計画、テスト先行の実装、独立レビュー、出荷判断までを、変更ごとのファイルでつなぎます。
 
-現在は社内・チームでの試用段階。以前の版では16スキルを両製品で各1回動かした結果が揃った。`ains-team-canvas` はその後に合意記録の手順へ変更し、変更後の実製品確認は未実施である。人による成果の最終確認と、初見の利用者が作者の補足なしで進められるかの確認は未了。[現在の確認範囲](docs/compatibility.md)と[初見利用の記録用紙](docs/first-use-check.md)を参照。
+Gitとターミナルを扱える開発者向けです。AIを使った開発が初めてなら、[小さな変更を通して試す](docs/getting-started.md)から始めてください。
 
-目的・制約・受入条件を先に決め、その範囲の実装と修正をAIに任せる Claude Code / Codex 向けエージェントスキル。人は仕様、計画、差分、展開を判断する。
-
-## 使い方
-
-入口は Claude Code の `/ains`、Codex の `$ains`。コマンドだけ、または状態確認の依頼なら、ファイルを変えず次の工程を示す。「この変更を仕様から出荷資料まで進めて」のように実行を依頼すると、対象の変更1件について工程を続行する。対象が曖昧なら、編集前に確認する。最新の変更を選ぶ既定は状態確認だけに使う。以下は Claude Code の表記で、Codex では先頭の `/` を `$` に置き換える。
-
-```
-/ains に対象と実行を依頼
-  → ains-setup → ains-spec → ains-tasks → ains-build → ains-ship
-    （初回のみ）   仕様の承認    計画の承認     テスト先行     出荷の判断
-```
-
-仕様・計画を人が承認したら、同じ実行依頼の範囲で次の工程へ進む。工程ごとのコマンド再入力や、同じ承認の繰り返しは要らない。未承認・範囲変更では判断を待つ。検査失敗は任せられた範囲と試行上限の中で修正し、独立レビューを完了できなければ未完了を示して止まる。コミット、push、PR作成、マージ、デプロイの許可は別に確かめる。
-
-小さな変更は `ains-spec` の中にタスクも書き、`ains-tasks` を省く。1行の修正は流れに乗せない。個別の工程だけを呼ぶ使い方もでき、その依頼では当該工程までで終える。振り返りは出荷後に `/ains-retro` を明示して呼ぶ。
-
-## スキル
-
-### 入口と開発の工程
-
-| スキル | 成果 |
-|---|---|
-| `/ains` | 状態確認、または対象を指定した一連の工程の実行 |
-| `/ains-setup` | AGENTS.md の Agent skills 節（CLAUDE.md からも読み込む）と、人の確認の規則 |
-| `/ains-spec` | `status: approved` の spec.md |
-| `/ains-tasks` | `status: approved` の tasks.md（Done when 付き） |
-| `/ains-build` | タスク単位のテスト先行実装 |
-| `/ains-ship` | 埋まった PR 本文と、人によるマージ・展開の判断 |
-| `/ains-retro` | 規約・現行仕様・回帰テスト・レビュー規則への反映 |
-| `/ains-team-canvas` | 合意した運用・担当・反映先と未決事項の記録 |
-| `/ains-harness` | CI と自動化の次の一手 |
-| `/ains-tool-access` | 外部ツールの接続方針と権限 |
-
-`ains` と、振り返り・チーム合意・ハーネス・ツール接続の4工程は明示起動のままにする。Claude Code の `disable-model-invocation: true` と Codex の `agents/openai.yaml` の `policy.allow_implicit_invocation: false` が対応する。主要5工程（setup・spec・tasks・build・ship）はエージェントからも呼べる。呼べることは、依頼範囲や仕様・計画の承認、操作権限を与えない。Codex での文脈節約量は保証しない。
-
-### エージェントが必要に応じて使う
-
-| スキル | 規律 |
-|---|---|
-| `ains-grilling` | 質問で認識を揃える（推奨案つき、事実はAI・決定は人） |
-| `ains-tdd` | 赤→緑→整理、再現から始めるバグ修正 |
-| `ains-review` | 別セッションの敵対的レビューと指摘の選別 |
-| `ains-review-gate` | パスと差分の規則で人の確認の要否を判定、マージ条件 |
-| `ains-release-safety` | フラグ、段階公開、戻らない状態変更 |
-| `ains-context-care` | 規約無視の診断、引継ぎ、ルールの整理 |
-
-## 変更ごとの成果物
-
-```
-docs/changes/<日付-slug>/
-├── spec.md    目的・文脈・制約・受入条件・対象外・観測された契約・未決事項（status: draft | approved）
-│              小さな変更ではタスクとメモもここに書く
-└── tasks.md   方針・任せる範囲・停止条件・タスク（Done when）・メモ（status: draft | approved）
-```
-
-人の承認を記録するのは spec.md と tasks.md の `status`。マージと展開の判断は `/ains-ship` が1回の質問で求める。検証結果は PR 本文にまとめ、PR を作らないときは本文の下書きを `pr.md` に置く。
-
-## スクリプト
-
-| スクリプト | 用途 |
-|---|---|
-| `ains/scripts/status.sh [<dir>]` | 変更ごとの spec と計画の状態、未決事項、タスクの進捗 |
-| `ains-spec/scripts/new-change.sh <slug>` | 変更ディレクトリと spec.md の雛形 |
-| `ains-review-gate/scripts/route-review.sh <rules> [base]` | 人の確認の要否判定（10 = 必須、0 = 規則外、3 = 判定不能） |
+現在は社内・チームでの試用段階です。以前の版には16スキル×両製品の動作記録がありますが、その後の本文変更すべてを実製品で確認したものではありません。人による成果の最終確認と初見利用の確認も未了です。利用前に[確認済みの範囲と制限](docs/compatibility.md)を確認してください。
 
 ## 導入
 
-全スキルのプロジェクト単位の一括導入を利用契約とする。段階ごとに使い分けられるが、個別スキルだけの導入は動作保証の対象外。対象は Claude Code / Codex で、他エージェントと macOS 以外の OS は未検証。両製品の正式な実行時サポート確認はまだ完了していない。[検証状況と互換性](docs/compatibility.md)を参照。
+利用先のプロジェクトへ**16スキルを一括導入**します。各工程は個別に使えますが、スキル同士が参照し合うため、一部だけの導入は動作保証の対象外です。
 
-前提は Node.js 22.20 以降と npm/npx、git、bash、および利用する製品のインストールと認証。[skills 公式 README](https://github.com/vercel-labs/skills#install-a-skill)の Node 要件に従う。初期の配布確認環境は skills 1.7.4、Node 24.13.1、npm 11.8.0、git 2.54.0、bash 5.2.26、Claude Code 2.1.308、Codex 0.163.0、macOS 26.7。これらは検証対象の版であり、全バージョンの保証ではない。最新の追加試用は Claude Code 2.1.312 / Codex 0.164.0 で行った。各結果の版と範囲は[試用確認一覧](docs/internal-trial-validation.md)に記載する。
+必要なもの：
 
-このリポジトリは [MIT License](LICENSE) で提供する。以下ではローカルのチェックアウトから導入する。
+- 導入・認証済みの Claude Code または Codex
+- Node.js 22.20以降、npm/npx、Git、Bash
+- 手元にチェックアウトした、このリポジトリ
 
-```bash
-# ソースのリポジトリを cwd にした場合：このリポジトリ自身へ導入
-npx --yes skills@1.7.4 add . --list
-npx --yes skills@1.7.4 add . --skill '*' -a claude-code codex -y
-```
-
-別のプロジェクトで使う場合は、**利用先を cwd** にし、ソースを絶対パスで指定する。`.` は常に現在のディレクトリを指す。
+以下は**ターミナル**で実行します。パスは手元の実際の絶対パスに置き換えてください。導入コマンドは検証に用いた `skills@1.7.4` に固定しています。
 
 ```bash
 cd /absolute/path/to/consumer-project
-npx --yes skills@1.7.4 add /absolute/path/to/ai-native-software-engineering --list
-npx --yes skills@1.7.4 add /absolute/path/to/ai-native-software-engineering --skill '*' -a claude-code codex -y
+npx --yes skills@1.7.4 add /absolute/path/to/ai-dev-workflow-skills --list
+npx --yes skills@1.7.4 add /absolute/path/to/ai-dev-workflow-skills --skill '*' -a claude-code codex -y
 npx --yes skills@1.7.4 list -a claude-code codex
 ```
 
-`--all` は全エージェントも対象にするため使わない。通常配置はリンクを使い、コピー配置は同じ add に `--copy` を付ける。実際の参照先は Claude Code が `.claude/skills/`、Codex が `.agents/skills/`。導入後、利用先で Claude Code は `/ains-setup`、Codex は `$ains-setup` を実行する。インストールとプロジェクトのワークフロー設定は別の作業である。
+使う製品が1つなら、`-a claude-code` または `-a codex` に絞れます。`--all` は全エージェントを対象にするため使いません。利用先にソースがない状態の `add .` は、このスキル群を指しません。
 
-設定の正本は `AGENTS.md` の Agent skills 節とし、Claude Code は `CLAUDE.md` の `@AGENTS.md` import で読む。既存の CLAUDE.md だけにある設定はその節を移し、無関係な文章を保持する。重複は統合し、値が食い違う場合は選択を確認してから移す。同一実体・シンボリックリンクは重複書き込みや自己 import を避ける。詳細と未検証の移行ケースは[互換性文書](docs/compatibility.md)を参照。
+Claude Code は `.claude/skills/`、Codex は `.agents/skills/` を参照します。通常はリンク配置です。ソースの場所に依存しないコピー配置にする場合は、`add` に `--copy` を付けてください。
 
-### 更新・削除
+### 初回設定
 
-主要5工程を明示起動限定からエージェント起動可能へ変える今回の変更は、起動契約の破壊的変更に当たる。既存の利用先に「各工程は手動起動のみ」という設定が残っていれば、その制限を保持する。自動続行へ移す場合は、利用者がその起動制限を置き換えると明示した上で `ains-setup` が該当する設定だけを更新する。再導入だけで既存方針を上書きせず、操作権限や無関係な設定も変えない。この変更による公開・タグ作成は行っていない。
+利用先のディレクトリで製品を起動し、**会話欄**へ入力します。これ以降の `/ains` や `$ains` は、シェルのコマンドではありません。
 
-利用先の cwd で実行する。ローカルソースの内容を更新したら、上の絶対パスによる全スキル add を再実行する（コピー配置なら再び `--copy`）。リンク配置でもメタデータや配置の再確認に同じ手順を使う。CLI 1.7.4 の両配置方式で、一時ソースの変更が再追加後の利用先に反映されることを確認した。リモート更新の検出でローカル変更が反映されるとは保証しない。
+| 製品 | 最初に入力するもの |
+|---|---|
+| Claude Code | `/ains-setup` |
+| Codex | `$ains-setup` |
 
-CLI 1.7.4 の help で確認したプロジェクト更新の構文は `npx --yes skills@1.7.4 update -p -y`。これは利用先の他のスキルも対象にするため、必要なら `update <skill名...> -p -y` で絞る。ローカルソースには上記の再追加を使う。新版の CLI を使う場合は help、配布検査、製品の実行を再確認してから版を変える。
+検査コマンド、変更記録の置き場所、人の確認が必要な変更、AIに任せる操作を決めます。既定で任せるのは編集とローカル検査です。設定は `AGENTS.md` の「Agent skills」節を正本とし、Claude Code は `CLAUDE.md` の `@AGENTS.md` から読みます。既存設定がある場合は、その値と無関係な記述を保持します。
 
-ains だけを両製品から削除する場合：
+**インストールと初回設定は別の作業です。** スキル一覧が見えても、プロジェクトの検査コマンドや権限が設定済みとは限りません。
 
-```bash
-npx --yes skills@1.7.4 remove ains ains-setup ains-spec ains-tasks ains-build ains-ship ains-retro ains-team-canvas ains-harness ains-tool-access ains-grilling ains-tdd ains-review ains-review-gate ains-release-safety ains-context-care -a claude-code codex -y
+## 使い方
+
+迷ったら、会話欄で Claude Code は `/ains`、Codex は `$ains` を呼びます。コマンドだけなら、ファイルを変えず、現在の状態と次の工程を示します。
+
+変更を進めたいときは、対象と終点を添えてください。以下は Codex の例です。Claude Code では先頭を `/ains` に置き換えます。
+
+```text
+$ains 注文履歴に日付フィルターを追加したいです。
+仕様の作成から、実装・独立レビュー・ローカルの出荷資料まで進めてください。
+コミット、push、PR作成、マージ、デプロイは依頼しません。
 ```
 
-この名前指定削除は両配置方式で検証し、無関係なスキルが残ることを確認した。削除後は `list -a claude-code codex` で確認する。設定した AGENTS.md / CLAUDE.md や変更成果物の整理は、スキルの削除とは別に判断する。
+```text
+初回設定 → 仕様 → 計画 → テスト先行の実装 → 検証・レビュー・出荷判断
+ains-setup   ains-spec   ains-tasks   ains-build          ains-ship
+```
+
+人は仕様と計画を読んで承認します。一連の作業を依頼していれば、承認後は同じ依頼の範囲で次の工程へ進みます。工程ごとのコマンド再入力は不要です。仕様が変わった場合や、範囲を超える判断が必要になった場合は停止します。
+
+小さな変更は仕様に方式とタスクをまとめ、計画ファイルを省きます。1行の修正やタイポには、全工程を使う必要はありません。
+
+### 必要な工程だけ使う
+
+以下は Claude Code の表記です。Codex は `/` を `$` に置き換えます。工程を単独で依頼した場合は、その工程までで終わります。
+
+| したいこと | コマンド | 確認する成果 |
+|---|---|---|
+| 状態と次の工程を知る／一連の作業を依頼する | `/ains` | 対象の変更と次の工程 |
+| プロジェクトの前提を揃える | `/ains-setup` | 検査・権限・人の確認の規則 |
+| 要望を検証可能な仕様にする | `/ains-spec` | 受入条件と検証方法を持つ `spec.md` |
+| 実装方法と順序を決める | `/ains-tasks` | 方針・範囲・完了条件を持つ `tasks.md` |
+| 承認済みの計画を実装する | `/ains-build` | テスト結果と完了したタスク |
+| 出荷できるか判断する資料を作る | `/ains-ship` | 受入検証・レビュー結果を含むPR本文 |
+| 出荷後の学びを次へ反映する | `/ains-retro` | 現行仕様・規約・回帰テストなどへの反映 |
+| チームの運用を決める | `/ains-team-canvas` | 合意・根拠・担当・反映先・未決事項 |
+| CIや確認の仕組みを整える | `/ains-harness` | 次に導入する検査と段階導入の方法 |
+| 外部ツールの接続を決める | `/ains-tool-access` | 接続方法・対象タスク・権限の範囲 |
+
+`ains`、`retro`、`team-canvas`、`harness`、`tool-access` は明示依頼で使います。主要5工程はエージェントからも呼び出せます。振り返りやチーム運用の変更を自動で始めることはありません。
+
+ほかの6スキルは作業中に必要に応じて使われます。質問の進め方（`ains-grilling`）、テスト先行実装（`ains-tdd`）、独立レビュー（`ains-review`）、人の確認の判定（`ains-review-gate`）、展開・切戻し（`ains-release-safety`）、文脈と引継ぎ（`ains-context-care`）です。詳しい手順は [skills/](skills/) にあります。
+
+### 人が確認すること
+
+- **仕様**：目的、受入条件、対象外が意図と合っているか。
+- **計画**：方式、順序、任せる操作の範囲に同意できるか。
+- **出荷**：差分、検証結果、未確認事項、展開と切戻しを確認し、マージ・展開を認めるか。
+
+仕様や計画への承認だけで、コミット・push・PR作成・マージ・デプロイの許可が増えることはありません。各操作は、明示された権限の範囲で行います。独立レビューを実行・照合できなければ、未完了として引き継ぎます。
+
+## 成果物と作業の再開
+
+```text
+docs/changes/<日付-slug>/
+├── spec.md     目的・文脈・制約・受入条件・検証方法・対象外
+├── tasks.md    方式・任せる範囲・停止条件・タスク・作業の記録
+└── pr.md       PRを作らない場合の出荷資料
+```
+
+仕様と計画はそれぞれ `status: draft` または `status: approved` を持ちます。小さな変更では `spec.md` にタスクと作業の記録もまとめます。新しい会話では変更ディレクトリを指定して `/ains` または `$ains` を呼んでください。[再開とトラブルへの対処](docs/work-resumption.md)で、承認待ち・検査失敗・判定不能の場合を説明しています。
+
+## 更新・削除
+
+### ローカルソースから更新する
+
+ソースを更新した後、利用先のディレクトリで「導入」の `add` を再実行します。コピー配置なら、再び `--copy` を付けます。リンク配置も、配置とメタデータの確認を兼ねて同じ手順を使ってください。
+
+既存設定に「各工程は手動起動のみ」とある場合、再導入だけではその方針を変更しません。自動続行へ移る場合は、`ains-setup` に「承認後に主要工程を続行する方式へ起動方針を変更する」と明示してください。操作の権限は別に保持されます。
 
 ### バージョン
 
-skills CLI はスキルの版番号を持たず、取得元の git ref と内容のハッシュを利用先の `skills-lock.json` に記録する。このため版は git タグ `vX.Y.Z` で表し、16スキルを1つの版として扱う。スキルごとの版は持たない（一括導入が利用契約のため）。変更内容は [CHANGELOG.md](CHANGELOG.md) に、リリース時に自動で記録される。
-
-[Semantic Versioning](https://semver.org/lang/ja/) に従い、次の変更はメジャーを上げる。試用段階の 0.x ではマイナーを上げる。
-
-- スキルの削除・改名、利用者が呼ぶか自動かの区分の変更
-- spec.md / tasks.md の書式や `status` の値など、利用先に残る成果物の互換を壊す変更
-- `scripts/` の引数・終了コードの変更
-
-リモートから版を固定して導入する。利用先を cwd にし、`#` の後にタグを付ける。
+16スキルを1つの版として扱い、Gitタグ `vX.Y.Z` で固定します。[変更履歴](CHANGELOG.md)を確認し、使いたい公開タグを指定してください。下の `vX.Y.Z` は実在する公開タグに置き換えてください。選んだタグに含まれる文書に従います。旧版は現行版と起動方針が異なる場合があります。
 
 ```bash
-npx --yes skills@1.7.4 add 53able/ai-dev-workflow-skills#v0.1.0 --skill '*' -a claude-code codex -y
+npx --yes skills@1.7.4 add 53able/ai-dev-workflow-skills#vX.Y.Z --skill '*' -a claude-code codex -y
 ```
 
-指定した ref は `skills-lock.json` の `ref` に記録される。`skills-lock.json` は利用先でコミットする。`update` は記録した ref と照合するため、タグを固定した場合は版が上がらない。版を上げるときは新しいタグで上の add を再実行する。16スキルの `ref` と内容が新しいタグのものに置き換わる。ref を省くと既定ブランチを追い、`update` で最新の内容になる。
+取得元のrefと内容のハッシュは、利用先の `skills-lock.json` に記録されます。このファイルもコミットしてください。タグ固定の場合、版を上げるには新しいタグで `add` し直します。refを省くと既定ブランチを追います。
 
-CLI 1.7.4 で、このリポジトリに一時的に置いたタグとブランチを使い、リンク・コピー両配置で上記を確認した。ブランチを指定した場合は、ブランチが進むと `update` が変更を取り込む。
+CLI 1.7.4のプロジェクト更新構文は `npx --yes skills@1.7.4 update -p -y` です。他のスキルも対象になるため、絞る場合は `update <skill名...> -p -y` を使います。ローカルソースには再追加を使ってください。
 
-リリースは [semantic-release](https://semantic-release.gitbook.io/) が行う。main への push ごとに `.github/workflows/release.yml` が決定的テスト（配布検査を含む）を実行し、通った場合だけ、前回のタグ以降のコミットから版を決める。
+### 削除する
 
-- コミットの型と版の関係（[Conventional Commits](https://www.conventionalcommits.org/ja/)）:
-  - `fix:` はパッチを上げる。
-  - `feat:` はマイナーを上げる。
-  - `BREAKING CHANGE:` は、上に挙げたメジャーを上げる変更に使う。0.x の間はマイナーを上げる（`release.config.cjs` の `releaseRules`）。
-  - `docs:`、`test:`、`chore:` などではリリースしない。
-- リリースの成果物:
-  - タグ `vX.Y.Z`
-  - GitHub Release
-  - `CHANGELOG.md` の更新（`chore(release): X.Y.Z [skip ci]` のコミットで main に入る）
-- 手作業でタグを作らない。
-- 1.0.0 に上げるときは `releaseRules` の breaking の行を外す。
+利用先のディレクトリで実行します。ainsの16スキルだけを対象にします。
 
-設定は `release.config.cjs` に、ツールの版は `package.json` と `package-lock.json` に置く。npm への公開はしない。
+```bash
+npx --yes skills@1.7.4 remove ains ains-setup ains-spec ains-tasks ains-build ains-ship ains-retro ains-team-canvas ains-harness ains-tool-access ains-grilling ains-tdd ains-review ains-review-gate ains-release-safety ains-context-care -a claude-code codex -y
+npx --yes skills@1.7.4 list -a claude-code codex
+```
 
-## 設計
+`AGENTS.md` / `CLAUDE.md` の設定と作成済みの変更記録は、スキルの削除とは別に整理します。他のプロジェクト規則も含まれるため、ファイルごと削除しないでください。
 
-方針は [docs/skill-set-design.md](docs/skill-set-design.md)。
+## 詳しく読む
 
-## 検証
+| 知りたいこと | 文書 |
+|---|---|
+| 小さな変更で導入から体験する | [はじめての利用](docs/getting-started.md) |
+| 対応製品・検証済みの範囲・制限 | [互換性](docs/compatibility.md) |
+| 中断・失敗から作業を再開する | [再開ガイド](docs/work-resumption.md) |
+| 各工程の役割と設計方針 | [スキル群の設計](docs/skill-set-design.md) |
+| 試用の実績と未確認事項 | [試用確認一覧](docs/internal-trial-validation.md) |
+| 導入の分かりやすさを実際に確かめる | [初見利用の確認](docs/first-use-check.md) |
+| 配布物を検査する | [配布検査](tests/distribution/README.md) |
 
-開発用の比較ケースは `tests/evals/ains-spec/`、`tests/evals/ains-build/`、`tests/evals/ains-review-gate/` に置く。元の5ケース・76ファイルを内容とモードを保持して移動し、配布スキルから分離した。結果は `ains-workspace/`（git 管理外）に出力する。
+開発用の評価ケースは `tests/evals/`、実製品の検証手順は `tests/runtime/` にあります。検査結果は実施した版と条件に限定され、配布検査だけで実製品の動作を保証するものではありません。
 
-スキル内の `assets/`、`scripts/`、参照 Markdown、`agents/` の製品設定は実行時の配布対象。開発用 eval、grader、fixture は導入しない。[配布検査の実行方法](tests/distribution/README.md)と[製品別の証拠](docs/compatibility.md)を参照。静的検査の成功だけで製品上の動作確認完了とはしない。
+リリースは `release.config.cjs` と `.github/workflows/release.yml` の semantic-release で管理し、npmには公開しません。`fix:` はパッチ、`feat:` はマイナー、互換性を壊す変更は `BREAKING CHANGE:` とします。0.xの間は破壊的変更もマイナーを上げます。詳細は[設計文書](docs/skill-set-design.md)を参照してください。
 
 ## License
 

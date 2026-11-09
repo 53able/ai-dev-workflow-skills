@@ -1,4 +1,13 @@
-# Claude G004 runtime evidence
+# Claude Codeの実製品検証を読み解く
+
+導入済みスキルを実際の Claude Code セッションで動かす、過去の検証手順です。通常の導入には使いません。現在の対応範囲は[互換性](../../../docs/compatibility.md)を参照してください。
+
+記録時の前提は Claude Code 2.1.308、claude-sonnet-5-5、既存の安全なログイン、Python 3、git、npm/npx、skills CLI 1.7.4 です。以下のコマンドはモデルを起動し、一時プロジェクトと証拠を書き込みます。再検証では既存の出力を保全し、新しい出力先・対象版・実行範囲を決めてから使います。
+
+合格は終了コードだけで決めず、配置先本文・実ツールの出力・承認待ち・変更ファイルを照合します。実装済みの処理と観測できた範囲を区別し、過去の失敗を現在版の成功に読み替えないでください。
+
+<details>
+<summary>当時の実行コマンド・観測方法・制約</summary>
 
 Dependency-free Python/system-tool harness for actual Claude Code sessions. Requires the existing secure host login, `claude` 2.1.308 with `claude-sonnet-5-5`, Git, Python 3, npm/npx and skills 1.7.4. This harness never provisions or copies credentials. It writes only this lane's evidence and disposable `/private/tmp` consumer repositories. Model calls use normal session-local tool grants, not permission bypasses.
 
@@ -32,3 +41,5 @@ Limitations are contractual: explicit slash expansion is not fully exposed by th
 Historical mode correction: initial `install-symlink.json` used a single Claude target and produced physical direct directories, despite its label. `install-actual-symlink.json` uses the pinned multi-target Claude/Codex installer command and verifies all Claude skill entries are symlinks into `.agents/skills`. `actual_symlink.py` supplies the three required explicit runtime controls on those real links. No Codex model was run in this lane. Current install() uses both project targets so future default runs obtain actual symlinks. See REPORT for the exact physical-mode coverage.
 
 Original migrated fixtures are replayed by `migrated_cases.py` and `original_build_cases.py`. The latter obtains synthetic user-role authority for original task-local commits in the successful build case; the draft/missing cases authorize only scaffold baseline commits. Source files/prompts are hash-mapped in original-five-case-map.json. Exact original notification-save-failure and migration-mitigation criteria remain failing/partial; those failures are not replaced with generic workflow passes.
+
+</details>
