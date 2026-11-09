@@ -2,6 +2,26 @@
 
 版の付け方は [README のバージョン](README.md#バージョン)を参照。この節以降はリリース時に semantic-release が更新する。
 
+# [0.5.0](https://github.com/53able/ai-dev-workflow-skills/compare/v0.4.0...v0.5.0) (2026-11-09)
+
+
+### Bug Fixes
+
+* 独立レビューの実行元と最終差分を照合する ([e3e1bab](https://github.com/53able/ai-dev-workflow-skills/commit/e3e1bab6333ee753f2a7e3269791337974ae31cb))
+* 証拠収集の失敗をランチャーの失敗として返す ([0781e63](https://github.com/53able/ai-dev-workflow-skills/commit/0781e6363507738569c4215f8e3786e442c96b3c))
+
+
+### Features
+
+* 承認済み範囲で主要工程を自動続行する ([4c6af94](https://github.com/53able/ai-dev-workflow-skills/commit/4c6af94d4dfcfb30692f189431829608ebcd770e))
+
+
+### BREAKING CHANGES
+
+* setup/spec/tasks/build/ship を明示起動限定から
+エージェント起動可能へ変更する。既存の手動限定設定は、利用者が
+移行を明示するまで保持する。
+
 # [0.4.0](https://github.com/53able/ai-dev-workflow-skills/compare/v0.3.4...v0.4.0) (2026-11-02)
 
 
